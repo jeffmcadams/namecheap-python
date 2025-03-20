@@ -4,8 +4,9 @@ Unit tests for the Namecheap API client
 """
 
 import unittest
-from unittest.mock import patch, Mock
 import xml.etree.ElementTree as ET
+from unittest.mock import Mock, patch
+
 from namecheap import NamecheapClient, NamecheapException
 
 
@@ -19,7 +20,7 @@ class TestNamecheapClient(unittest.TestCase):
             api_key="test_key",
             username="test_user",
             client_ip="127.0.0.1",
-            sandbox=True
+            sandbox=True,
         )
 
     def test_initialization(self):
@@ -28,7 +29,9 @@ class TestNamecheapClient(unittest.TestCase):
         self.assertEqual(self.client.api_key, "test_key")
         self.assertEqual(self.client.username, "test_user")
         self.assertEqual(self.client.client_ip, "127.0.0.1")
-        self.assertEqual(self.client.base_url, "https://api.sandbox.namecheap.com/xml.response")
+        self.assertEqual(
+            self.client.base_url, "https://api.sandbox.namecheap.com/xml.response"
+        )
 
     def test_get_base_params(self):
         """Test _get_base_params method"""
@@ -37,11 +40,11 @@ class TestNamecheapClient(unittest.TestCase):
             "ApiUser": "test_user",
             "ApiKey": "test_key",
             "UserName": "test_user",
-            "ClientIp": "127.0.0.1"
+            "ClientIp": "127.0.0.1",
         }
         self.assertEqual(base_params, expected_params)
 
-    @patch('requests.get')
+    @patch("requests.get")
     def test_make_request(self, mock_get):
         """Test _make_request method"""
         # Mock the response
@@ -62,7 +65,9 @@ class TestNamecheapClient(unittest.TestCase):
         mock_get.return_value = mock_response
 
         # Call the method
-        result = self.client._make_request("namecheap.domains.check", {"DomainList": "example.com"})
+        result = self.client._make_request(
+            "namecheap.domains.check", {"DomainList": "example.com"}
+        )
 
         # Verify the request was made correctly
         mock_get.assert_called_once()
@@ -75,7 +80,7 @@ class TestNamecheapClient(unittest.TestCase):
         self.assertEqual(kwargs["params"]["Command"], "namecheap.domains.check")
         self.assertEqual(kwargs["params"]["DomainList"], "example.com")
 
-    @patch('requests.get')
+    @patch("requests.get")
     def test_domains_check(self, mock_get):
         """Test domains_check method"""
         # Mock the response
@@ -114,7 +119,7 @@ class TestNamecheapClient(unittest.TestCase):
             elif domain["Domain"] == "example.net":
                 self.assertTrue(domain["Available"])
 
-    @patch('requests.get')
+    @patch("requests.get")
     def test_dns_record_operations(self, mock_get):
         """Test DNS record operations"""
         # Mock the get hosts response
@@ -144,7 +149,7 @@ class TestNamecheapClient(unittest.TestCase):
         hosts_result = result["DomainDNSGetHostsResult"]
         self.assertEqual(hosts_result["Domain"], "example.com")
         self.assertTrue(hosts_result["IsUsingOurDNS"])
-        
+
         host_records = hosts_result["host"]
         self.assertEqual(len(host_records), 2)
         self.assertEqual(host_records[0]["Name"], "@")
@@ -152,7 +157,7 @@ class TestNamecheapClient(unittest.TestCase):
         self.assertEqual(host_records[1]["Name"], "www")
         self.assertEqual(host_records[1]["Type"], "CNAME")
 
-    @patch('requests.get')
+    @patch("requests.get")
     def test_parse_error_response(self, mock_get):
         """Test error handling in _parse_response method"""
         # Mock the error response
@@ -173,10 +178,15 @@ class TestNamecheapClient(unittest.TestCase):
 
         # Call the method and verify exception is raised
         with self.assertRaises(NamecheapException) as context:
-            self.client._make_request("namecheap.domains.check", {"DomainList": "example.com"})
-        
+            self.client._make_request(
+                "namecheap.domains.check", {"DomainList": "example.com"}
+            )
+
         self.assertEqual(context.exception.code, "1011102")
-        self.assertIn("API Key is invalid or API access has not been enabled", context.exception.message)
+        self.assertIn(
+            "API Key is invalid or API access has not been enabled",
+            context.exception.message,
+        )
 
 
 if __name__ == "__main__":

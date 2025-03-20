@@ -7,7 +7,9 @@ Usage:
 """
 
 import sys
+
 from namecheap import NamecheapClient
+
 from .utils.print_table import print_table
 
 # Check if the user provided any domains to check
@@ -27,16 +29,11 @@ rows = []
 for domain in result["DomainCheckResult"]:
     available = "Yes" if domain["Available"] else "No"
     premium = "Yes" if domain["IsPremiumName"] else "No"
-    
+
     price = domain["PremiumRegistrationPrice"]
     price_display = "N/A" if price == 0 else f"${price:.2f}"
-    
-    rows.append([
-        domain["Domain"],
-        available,
-        premium,
-        price_display
-    ])
+
+    rows.append([domain["Domain"], available, premium, price_display])
 
 # Print the table
 print("\nResults:")
