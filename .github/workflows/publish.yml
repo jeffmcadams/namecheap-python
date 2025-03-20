@@ -1,10 +1,11 @@
 name: Publish Python Package
 
+# This workflow is triggered by the release.yml workflow
+# No need for manual triggers, as release.yml handles everything
 on:
-  release:
-    types: [created]
-  workflow_dispatch:
-    # Allow manually triggering
+  push:
+    tags:
+      - 'v*.*.*'  # Run when tag matches v*, e.g., v1.0.0, v2.3.4
 
 jobs:
   deploy:
@@ -24,7 +25,17 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install build
+        pip install build poetry
+    - name: Set version from tag (if triggered by tag)
+      if: startsWith(github.ref, 'refs/tags/')
+      run: |
+        # Extract version from the tag
+        TAG_NAME=${GITHUB_REF#refs/tags/}
+        VERSION=${TAG_NAME#v}
+        echo "Using version from tag: ${VERSION}"
+        
+        # Set version in pyproject.toml (single source of truth)
+        poetry version ${VERSION}
     - name: Build package
       run: python -m build
     - name: Publish package

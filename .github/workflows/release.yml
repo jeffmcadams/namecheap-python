@@ -1,4 +1,4 @@
-name: Bump Version
+name: Bump Version and Release
 
 on:
   workflow_dispatch:
@@ -14,11 +14,15 @@ on:
           - patch
 
 jobs:
-  bump-version:
+  release:
     runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/namecheap-python
     permissions:
-      contents: write  # needed to create release and push commits
-      
+      contents: write  # Needed for creating tags and releases
+      id-token: write  # Needed for PyPI trusted publishing
+    
     steps:
     - uses: actions/checkout@v3
       with:
@@ -32,7 +36,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install poetry
+        pip install poetry build
     
     - name: Configure Git
       run: |
@@ -40,18 +44,29 @@ jobs:
         git config user.email github-actions@github.com
     
     - name: Bump version
+      id: bump_version
       run: |
+        # Bump version using Poetry (single source of truth)
         poetry version ${{ github.event.inputs.version_part }}
         NEW_VERSION=$(poetry version -s)
         echo "NEW_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
+        echo "Bumped version to ${NEW_VERSION}"
     
-    - name: Commit and push changes
+    - name: Commit version changes
       run: |
         git add pyproject.toml
         git commit -m "Bump version to ${NEW_VERSION}"
         git push
     
-    - name: Create Release
+    - name: Create and push tag
+      run: |
+        git tag -a "v${NEW_VERSION}" -m "Release version ${NEW_VERSION}"
+        git push origin "v${NEW_VERSION}"
+    
+    - name: Build package
+      run: python -m build
+    
+    - name: Create GitHub Release
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -60,3 +75,15 @@ jobs:
         release_name: Release v${{ env.NEW_VERSION }}
         draft: false
         prerelease: false
+        body: |
+          Release version ${{ env.NEW_VERSION }}
+          
+          ## How to install
+          ```
+          pip install namecheap-python==${{ env.NEW_VERSION }}
+          ```
+    
+    - name: Publish package to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        skip-existing: true
