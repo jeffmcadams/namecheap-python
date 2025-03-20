@@ -76,8 +76,25 @@ select = [
     "SIM", # flake8-simplify
     "TCH", # flake8-type-checking
 ]
-ignore = []
-unfixable = []
+# Ignore certain error codes project-wide
+ignore = [
+    # Ignore line too long in test files and examples
+    "E501",
+    # Allow module names with dashes in utils directory
+    "N999",
+    # Allow exception without Error suffix (for backwards compatibility)
+    "N818",
+    # Allow simple nested if statements
+    "SIM102",
+    # Allow raising exceptions without from
+    "B904",
+]
+# Per-file ignores
+[tool.ruff.lint.per-file-ignores]
+# Ignore unused variables and imports in tests
+"tests/*.py" = ["F401", "F841"]
+# Ignore f-string without placeholders and unused vars in examples
+"examples/*.py" = ["F541", "F841"]
 
 [tool.poetry.scripts]
 format = "poetry:run_format"
