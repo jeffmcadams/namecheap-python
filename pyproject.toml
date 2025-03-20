@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "namecheap-python"
-version = "0.1.0"
+version = "0.1.1"
 description = "A Python SDK for the Namecheap API"
 authors = ["Adrian Galilea <adriangalilea@gmail.com>"]
 license = "MIT"
@@ -31,7 +31,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.7"
+python = ">=3.8"
 requests = ">=2.25.0"
 python-dotenv = ">=0.19.0"
 
@@ -44,26 +44,27 @@ mypy = ">=1.0.0"
 ruff = ">=0.0.263"
 pre-commit = ">=3.0.0"
 types-requests = ">=2.25.0"
-types-python-dotenv = ">=0.19.0"
 
 [tool.black]
 line-length = 88
-target-version = ["py37", "py38", "py39", "py310", "py311"]
+target-version = ["py38", "py39", "py310", "py311"]
 
 [tool.isort]
 profile = "black"
 line_length = 88
 
 [tool.mypy]
-python_version = "3.7"
+python_version = "3.8"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 
 [tool.ruff]
-target-version = "py37"
+target-version = "py38"
 line-length = 88
+
+[tool.ruff.lint]
 select = [
     "E",  # pycodestyle errors
     "F",  # pyflakes
