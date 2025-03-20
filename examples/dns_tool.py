@@ -5,7 +5,6 @@ DNS management tool for Namecheap domains
 
 import argparse
 import json
-import sys
 
 from examples.utils.print_table import print_table
 from namecheap import NamecheapClient, NamecheapException
@@ -98,7 +97,7 @@ def add_record(client, domain, record_data, args=None):
             new_record["MXPref"] = record_data.get("priority", "10")
 
         # Ask for confirmation before making changes (unless force flag is used)
-        print(f"\nYou are about to add a new DNS record:")
+        print("\nYou are about to add a new DNS record:")
         print(f"  Type: {new_record['RecordType']}")
         print(f"  Host: {new_record['HostName']}.{domain}")
         print(f"  Value: {new_record['Address']}")
@@ -166,7 +165,7 @@ def delete_record(client, domain, record_data, args=None):
             return
 
         # Ask for confirmation before deleting
-        print(f"\nYou are about to delete the following DNS record(s):")
+        print("\nYou are about to delete the following DNS record(s):")
         for i, record in enumerate(records_to_delete, 1):
             print(f"\n  Record #{i}:")
             print(f"    Type: {record.get('Type')}")
@@ -202,7 +201,7 @@ def import_records(client, domain, json_file, args=None):
     """Import DNS records from a JSON file"""
     try:
         # Read the JSON file
-        with open(json_file, "r") as f:
+        with open(json_file) as f:
             records = json.load(f)
 
         if not isinstance(records, list):
