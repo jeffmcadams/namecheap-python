@@ -3,6 +3,8 @@ name: Publish Python Package
 on:
   release:
     types: [created]
+  workflow_dispatch:
+    # Allow manually triggering
 
 jobs:
   deploy:
