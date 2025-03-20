@@ -54,8 +54,8 @@ poetry run pytest
 # Build package
 poetry build
 
-# Publish to PyPI
-poetry publish
+# Create a release (for maintainers)
+# This is done through GitHub Actions - see Release Process section below
 ```
 
 ## Authentication
@@ -346,6 +346,39 @@ poetry run mypy namecheap
 # Run tests
 poetry run pytest
 ```
+
+## Release Process
+
+This project uses an automated release workflow for versioning and publishing to PyPI.
+
+### Version Management
+
+- The single source of truth for the version is `pyproject.toml`
+- The `__version__` in `__init__.py` is dynamically determined from the package metadata
+- No need to manually update version numbers in multiple places
+
+### Creating a New Release
+
+1. Go to the GitHub repository: https://github.com/adriangalilea/namecheap-python
+2. Click on "Actions" in the top navigation
+3. Select the "Bump Version and Release" workflow
+4. Click "Run workflow" button
+5. Select the version part to bump (major/minor/patch) based on [semantic versioning](https://semver.org/):
+   - `patch`: for backwards compatible bug fixes (0.1.2 -> 0.1.3)
+   - `minor`: for backwards compatible new features (0.1.3 -> 0.2.0)
+   - `major`: for backwards incompatible changes (0.2.0 -> 1.0.0)
+6. Click "Run workflow" to start the process
+
+### What Happens Automatically
+
+The workflow will:
+1. Checkout the code
+2. Bump the version in `pyproject.toml` according to your selection
+3. Commit the change to the repository
+4. Create and push a git tag (e.g., v0.1.3)
+5. Create a GitHub release
+6. Build the package
+7. Publish to PyPI using trusted publishing
 
 ## License
 
