@@ -1,0 +1,63 @@
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "namecheap-python"
+version = "0.1.0"
+description = "A Python SDK for the Namecheap API"
+authors = ["Adrian Galilea <adriangalilea@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/adriangalilea/namecheap-python"
+documentation = "https://github.com/adriangalilea/namecheap-python#readme"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Internet :: Name Service (DNS)",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+keywords = ["namecheap", "domain", "dns", "api", "sdk"]
+packages = [
+    { include = "namecheap" }
+]
+
+[tool.poetry.dependencies]
+python = ">=3.7"
+requests = ">=2.25.0"
+python-dotenv = ">=0.19.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=7.0.0"
+pytest-cov = ">=3.0.0"
+black = ">=23.0.0"
+isort = ">=5.0.0"
+mypy = ">=1.0.0"
+
+[tool.black]
+line-length = 88
+target-version = ["py37", "py38", "py39", "py310", "py311"]
+
+[tool.isort]
+profile = "black"
+line_length = 88
+
+[tool.mypy]
+python_version = "3.7"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+[tool.poetry.scripts]
+format = "poetry:run_format"
+check = "poetry:run_check"
+test = "pytest:main"
