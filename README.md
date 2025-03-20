@@ -305,6 +305,48 @@ except NamecheapException as e:
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+### Development Setup
+
+This project uses poetry for dependency management and packaging:
+
+```bash
+# Install poetry
+curl -sSL https://install.python-poetry.org | python3 -
+
+# Setup development environment
+poetry install
+
+# Install pre-commit hooks
+pip install pre-commit
+pre-commit install
+```
+
+### Code Quality Standards
+
+This project follows these coding standards:
+
+- **Formatting**: Black with 88 character line length
+- **Import Sorting**: isort (configured to be compatible with Black)
+- **Linting**: Ruff for fast and comprehensive linting
+- **Type Checking**: mypy with strict type checking
+
+All these checks are enforced in CI/CD pipelines and can be run locally:
+
+```bash
+# Format code
+poetry run black .
+poetry run isort .
+
+# Lint code
+poetry run ruff check .
+
+# Type check
+poetry run mypy namecheap
+
+# Run tests
+poetry run pytest
+```
+
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
