@@ -10,7 +10,7 @@ import sys
 
 from namecheap import NamecheapClient
 
-from .utils.print_table import print_table
+from utils.print_table import print_table
 
 # Check if the user provided any domains to check
 if len(sys.argv) < 2:
