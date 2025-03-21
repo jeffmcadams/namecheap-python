@@ -396,6 +396,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Disclaimer
 
-All this code was produced in a single sitting vibe coding with `claude code` for 2 hours and ~$25.
+All this code was produced in a single vibe coding session with `claude code` for 2 hours and ~$30.
 
 Excuse the occasional AI slop, if you spot it let me know.
