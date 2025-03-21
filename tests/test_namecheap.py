@@ -4,7 +4,6 @@ Unit tests for the Namecheap API client
 """
 
 import unittest
-import xml.etree.ElementTree as ET
 from unittest.mock import Mock, patch
 
 from namecheap import NamecheapClient, NamecheapException

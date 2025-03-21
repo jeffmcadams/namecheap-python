@@ -3,9 +3,7 @@
 Test suite for the Namecheap Python SDK
 """
 
-import os
 import unittest
-import xml.etree.ElementTree as ET
 from unittest.mock import Mock, patch
 
 from namecheap import NamecheapClient, NamecheapException
