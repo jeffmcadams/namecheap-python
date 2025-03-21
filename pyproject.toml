@@ -100,3 +100,4 @@ ignore = [
 format = "poetry:run_format"
 check = "poetry:run_check"
 test = "pytest:main"
+bump = "namecheap.utils:bump_version"

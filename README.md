@@ -369,6 +369,16 @@ This project uses an automated release workflow for versioning and publishing to
    - `major`: for backwards incompatible changes (0.2.0 -> 1.0.0)
 6. Click "Run workflow" to start the process
 
+Alternatively, you can use the GitHub CLI to bump the version directly from your terminal:
+
+```bash
+# Using GitHub CLI directly
+gh workflow run "Bump Version and Release" -f release-type=patch|minor|major
+
+# Or using the provided utility script
+python utils/bump-version.py patch|minor|major
+```
+
 ### What Happens Automatically
 
 The workflow will:
