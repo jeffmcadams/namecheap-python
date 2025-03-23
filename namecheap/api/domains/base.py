@@ -2,6 +2,7 @@
 Base domain operations for the Namecheap API
 """
 from typing import Any, Dict, List, Optional, Tuple
+import tldextract
 
 # Common error codes shared across domain operations
 COMMON_DOMAIN_ERRORS = {
@@ -35,21 +36,6 @@ class DomainsBaseAPI:
             client: The Namecheap API client instance
         """
         self.client = client
-
-    def _split_domain_name(self, domain_name: str) -> Tuple[str, str]:
-        """
-        Split a domain name into its SLD and TLD parts
-
-        Args:
-            domain_name: Full domain name (e.g., "example.com")
-
-        Returns:
-            Tuple containing (SLD, TLD) parts (e.g., ("example", "com"))
-        """
-        parts = domain_name.split(".")
-        sld = parts[0]
-        tld = ".".join(parts[1:])
-        return sld, tld
 
     def check(self, domains: List[str]) -> List[Dict[str, Any]]:
         """
@@ -256,7 +242,8 @@ class DomainsBaseAPI:
             }
         }
 
-        sld, tld = self._split_domain_name(domain_name)
+        extract = tldextract.extract(domain_name)
+        sld, tld = extract.domain, extract.suffix
         params = {"DomainName": sld, "TLD": tld}
 
         # Make the API call with centralized error handling
@@ -342,7 +329,8 @@ class DomainsBaseAPI:
             }
         }
 
-        sld, tld = self._split_domain_name(domain_name)
+        extract = tldextract.extract(domain_name)
+        sld, tld = extract.domain, extract.suffix
         params = {"DomainName": sld, "TLD": tld}
 
         # Make the API call with centralized error handling
@@ -446,7 +434,8 @@ class DomainsBaseAPI:
             }
         }
 
-        sld, tld = self._split_domain_name(domain_name)
+        extract = tldextract.extract(domain_name)
+        sld, tld = extract.domain, extract.suffix
         params = {"DomainName": sld, "TLD": tld, "Years": years}
 
         if promotion_code:

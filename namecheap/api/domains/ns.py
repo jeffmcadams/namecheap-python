@@ -2,6 +2,7 @@
 Nameserver operations for domains API
 """
 from typing import Any, Dict, List, Optional
+import tldextract
 
 # Common error codes shared across nameserver operations
 COMMON_NS_ERRORS = {
@@ -36,13 +37,6 @@ class NsAPI:
         """
         self.client = client
 
-    def _split_domain_name(self, domain_name: str):
-        """Split domain name into SLD and TLD parts"""
-        parts = domain_name.split(".")
-        sld = parts[0]
-        tld = ".".join(parts[1:])
-        return sld, tld
-
     def create(self, domain_name: str, nameserver: str, ip: str) -> Dict[str, Any]:
         """
         Creates a new nameserver
@@ -74,6 +68,16 @@ class NsAPI:
         Raises:
             NamecheapException: If the API returns an error
         """
+        # Validate input
+        if not domain_name or not isinstance(domain_name, str):
+            raise ValueError("Domain name must be a non-empty string")
+
+        if not nameserver or not isinstance(nameserver, str):
+            raise ValueError("Nameserver must be a non-empty string")
+
+        if not ip or not isinstance(ip, str):
+            raise ValueError("IP address must be a non-empty string")
+
         # Error codes for nameserver creation
         error_codes = {
             **COMMON_NS_ERRORS,
@@ -99,16 +103,20 @@ class NsAPI:
             }
         }
 
-        sld, tld = self._split_domain_name(domain_name)
+        # Set up context variables for error messages
+        context = {"domain_name": domain_name, "nameserver": nameserver}
+
+        # Extract domain parts
+        extract = tldextract.extract(domain_name)
+        sld = extract.domain
+        tld = extract.suffix
+
         params = {
             "SLD": sld,
             "TLD": tld,
             "Nameserver": nameserver,
             "IP": ip
         }
-
-        # Set up context variables for error messages
-        context = {"domain_name": domain_name, "nameserver": nameserver}
 
         # Make the API call with centralized error handling
         response = self.client._make_request(
@@ -154,6 +162,13 @@ class NsAPI:
         Raises:
             NamecheapException: If the API returns an error
         """
+        # Validate input
+        if not domain_name or not isinstance(domain_name, str):
+            raise ValueError("Domain name must be a non-empty string")
+
+        if not nameserver or not isinstance(nameserver, str):
+            raise ValueError("Nameserver must be a non-empty string")
+
         # Error codes for nameserver deletion
         error_codes = {
             **COMMON_NS_ERRORS,
@@ -171,15 +186,19 @@ class NsAPI:
             }
         }
 
-        sld, tld = self._split_domain_name(domain_name)
+        # Set up context variables for error messages
+        context = {"domain_name": domain_name, "nameserver": nameserver}
+
+        # Extract domain parts
+        extract = tldextract.extract(domain_name)
+        sld = extract.domain
+        tld = extract.suffix
+
         params = {
             "SLD": sld,
             "TLD": tld,
             "Nameserver": nameserver
         }
-
-        # Set up context variables for error messages
-        context = {"domain_name": domain_name, "nameserver": nameserver}
 
         # Make the API call with centralized error handling
         response = self.client._make_request(
@@ -230,6 +249,19 @@ class NsAPI:
         Raises:
             NamecheapException: If the API returns an error
         """
+        # Validate input
+        if not domain_name or not isinstance(domain_name, str):
+            raise ValueError("Domain name must be a non-empty string")
+
+        if not nameserver or not isinstance(nameserver, str):
+            raise ValueError("Nameserver must be a non-empty string")
+
+        if not old_ip or not isinstance(old_ip, str):
+            raise ValueError("Old IP address must be a non-empty string")
+
+        if not new_ip or not isinstance(new_ip, str):
+            raise ValueError("New IP address must be a non-empty string")
+
         # Error codes for nameserver update
         error_codes = {
             **COMMON_NS_ERRORS,
@@ -251,7 +283,14 @@ class NsAPI:
             }
         }
 
-        sld, tld = self._split_domain_name(domain_name)
+        # Set up context variables for error messages
+        context = {"domain_name": domain_name, "nameserver": nameserver}
+
+        # Extract domain parts
+        extract = tldextract.extract(domain_name)
+        sld = extract.domain
+        tld = extract.suffix
+
         params = {
             "SLD": sld,
             "TLD": tld,
@@ -259,9 +298,6 @@ class NsAPI:
             "OldIP": old_ip,
             "IP": new_ip
         }
-
-        # Set up context variables for error messages
-        context = {"domain_name": domain_name, "nameserver": nameserver}
 
         # Make the API call with centralized error handling
         response = self.client._make_request(
@@ -306,6 +342,13 @@ class NsAPI:
         Raises:
             NamecheapException: If the API returns an error
         """
+        # Validate input
+        if not domain_name or not isinstance(domain_name, str):
+            raise ValueError("Domain name must be a non-empty string")
+
+        if not nameserver or not isinstance(nameserver, str):
+            raise ValueError("Nameserver must be a non-empty string")
+
         # Error codes for getting nameserver info
         error_codes = {
             **COMMON_NS_ERRORS,
@@ -315,15 +358,19 @@ class NsAPI:
             }
         }
 
-        sld, tld = self._split_domain_name(domain_name)
+        # Set up context variables for error messages
+        context = {"domain_name": domain_name, "nameserver": nameserver}
+
+        # Extract domain parts
+        extract = tldextract.extract(domain_name)
+        sld = extract.domain
+        tld = extract.suffix
+
         params = {
             "SLD": sld,
             "TLD": tld,
             "Nameserver": nameserver
         }
-
-        # Set up context variables for error messages
-        context = {"domain_name": domain_name, "nameserver": nameserver}
 
         # Make the API call with centralized error handling
         response = self.client._make_request(

@@ -2,6 +2,13 @@
 DNS-related operations for domains API
 """
 from typing import Any, Dict, List, Optional
+import tldextract
+
+# Constants for default values
+DEFAULT_TTL = "1800"
+DEFAULT_MX_PREF = "10"
+DEFAULT_RECORD_NAME = "@"
+DEFAULT_RECORD_TYPE = "A"
 
 # Common error codes applicable to multiple DNS methods
 COMMON_DNS_ERRORS = {
@@ -48,13 +55,6 @@ class DnsAPI:
         """
         self.client = client
 
-    def _split_domain_name(self, domain_name: str):
-        """Split domain name into SLD and TLD parts"""
-        parts = domain_name.split(".")
-        sld = parts[0]
-        tld = ".".join(parts[1:])
-        return sld, tld
-
     def get_hosts(self, domain: str) -> List[Dict[str, Any]]:
         """
         Retrieves DNS host record settings for the requested domain.
@@ -81,7 +81,14 @@ class DnsAPI:
         Raises:
             NamecheapException: If the API returns an error
         """
-        sld, tld = self._split_domain_name(domain)
+        # Validate input
+        if not domain or not isinstance(domain, str):
+            raise ValueError("Domain must be a non-empty string")
+
+        # Use tldextract to split the domain
+        extracted = tldextract.extract(domain)
+        sld = extracted.domain
+        tld = extracted.suffix
 
         # Define error codes specific to this endpoint
         error_codes = {
@@ -147,6 +154,40 @@ class DnsAPI:
         Raises:
             NamecheapException: If the API returns an error
         """
+        # Validate inputs
+        if not domain_name or not isinstance(domain_name, str):
+            raise ValueError("Domain name must be a non-empty string")
+
+        if not hosts or not isinstance(hosts, list):
+            raise ValueError("Hosts must be a non-empty list")
+
+        # Validate each host record
+        for i, host in enumerate(hosts):
+            if not isinstance(host, dict):
+                raise ValueError(
+                    f"Host record at index {i} must be a dictionary")
+
+            # Required fields
+            if "Address" not in host:
+                raise ValueError(
+                    f"Host record at index {i} is missing required 'Address' field")
+
+            # Check TTL range if provided
+            if "TTL" in host:
+                try:
+                    ttl = int(host["TTL"])
+                    if ttl < 60 or ttl > 86400:
+                        raise ValueError(
+                            f"Host record at index {i} has invalid TTL (must be between 60 and 86400)")
+                except ValueError:
+                    raise ValueError(
+                        f"Host record at index {i} has invalid TTL (must be an integer)")
+
+            # MX record validation
+            if host.get("Type", "").upper() == "MX" and "MXPref" not in host:
+                raise ValueError(
+                    f"MX record at index {i} is missing required 'MXPref' field")
+
         # Error codes for setHosts method
         # https://www.namecheap.com/support/api/methods/domains-dns/set-hosts/
         error_codes = {
@@ -181,8 +222,10 @@ class DnsAPI:
             }
         }
 
-        # Split domain into SLD and TLD
-        sld, tld = self._split_domain_name(domain_name)
+        # Use tldextract to split the domain
+        extracted = tldextract.extract(domain_name)
+        sld = extracted.domain
+        tld = extracted.suffix
 
         # Set up context variables for error messages
         context = {"domain": domain_name}
@@ -199,17 +242,16 @@ class DnsAPI:
             idx = i + 1
 
             # Required fields
-            params[f"HostName{idx}"] = host.get("Name", "@")  # @ is default
-            params[f"RecordType{idx}"] = host.get("Type", "A")  # A is default
+            params[f"HostName{idx}"] = host.get("Name", DEFAULT_RECORD_NAME)
+            params[f"RecordType{idx}"] = host.get("Type", DEFAULT_RECORD_TYPE)
             params[f"Address{idx}"] = host.get("Address", "")
 
             # Optional fields with defaults
-            params[f"TTL{idx}"] = host.get("TTL", "1800")  # Default TTL
+            params[f"TTL{idx}"] = host.get("TTL", DEFAULT_TTL)
 
             # Priority is required for MX records
             if host.get("Type", "").upper() == "MX" or "MXPref" in host:
-                params[f"MXPref{idx}"] = host.get(
-                    "MXPref", "10")  # Default priority
+                params[f"MXPref{idx}"] = host.get("MXPref", DEFAULT_MX_PREF)
 
         # Make the API request
         response = self.client._make_request(
@@ -243,6 +285,15 @@ class DnsAPI:
         Raises:
             NamecheapException: If the API returns an error
         """
+        # Validate input
+        if not domain_name or not isinstance(domain_name, str):
+            raise ValueError("Domain name must be a non-empty string")
+
+        # Use tldextract to split the domain
+        extracted = tldextract.extract(domain_name)
+        sld = extracted.domain
+        tld = extracted.suffix
+
         # Error codes for setDefault method
         error_codes = {
             **COMMON_DNS_ERRORS,
@@ -260,7 +311,6 @@ class DnsAPI:
             }
         }
 
-        sld, tld = self._split_domain_name(domain_name)
         params = {"SLD": sld, "TLD": tld}
 
         # Make the API call with centralized error handling
@@ -297,6 +347,34 @@ class DnsAPI:
             ValueError: If the number of nameservers is invalid
             NamecheapException: If the API returns an error
         """
+        # Validate inputs
+        if not domain_name or not isinstance(domain_name, str):
+            raise ValueError("Domain name must be a non-empty string")
+
+        if not nameservers or not isinstance(nameservers, list):
+            raise ValueError("Nameservers must be a non-empty list")
+
+        if len(nameservers) < 2:
+            raise ValueError("At least 2 nameservers are required")
+
+        if len(nameservers) > 12:
+            raise ValueError("Maximum of 12 nameservers allowed")
+
+        # Validate each nameserver format
+        for i, ns in enumerate(nameservers):
+            if not isinstance(ns, str) or not ns.strip():
+                raise ValueError(
+                    f"Nameserver at index {i} must be a non-empty string")
+
+            # Check for duplicate nameservers
+            if nameservers.count(ns) > 1:
+                raise ValueError(f"Duplicate nameserver found: {ns}")
+
+        # Use tldextract to split the domain
+        extracted = tldextract.extract(domain_name)
+        sld = extracted.domain
+        tld = extracted.suffix
+
         # Error codes for setCustom method
         error_codes = {
             **COMMON_DNS_ERRORS,
@@ -330,12 +408,6 @@ class DnsAPI:
             }
         }
 
-        if len(nameservers) < 2:
-            raise ValueError("At least 2 nameservers are required")
-        if len(nameservers) > 12:
-            raise ValueError("Maximum of 12 nameservers allowed")
-
-        sld, tld = self._split_domain_name(domain_name)
         params = {"SLD": sld, "TLD": tld}
 
         # Add nameservers to parameters
@@ -374,6 +446,15 @@ class DnsAPI:
         Raises:
             NamecheapException: If the API returns an error
         """
+        # Validate input
+        if not domain_name or not isinstance(domain_name, str):
+            raise ValueError("Domain name must be a non-empty string")
+
+        # Use tldextract to split the domain
+        extracted = tldextract.extract(domain_name)
+        sld = extracted.domain
+        tld = extracted.suffix
+
         # Error codes for getList method
         error_codes = {
             **COMMON_DNS_ERRORS,
@@ -387,7 +468,6 @@ class DnsAPI:
             }
         }
 
-        sld, tld = self._split_domain_name(domain_name)
         params = {"SLD": sld, "TLD": tld}
 
         # Make the API call with centralized error handling
@@ -442,6 +522,15 @@ class DnsAPI:
         Raises:
             NamecheapException: If the API returns an error
         """
+        # Validate input
+        if not domain_name or not isinstance(domain_name, str):
+            raise ValueError("Domain name must be a non-empty string")
+
+        # Use tldextract to split the domain
+        extracted = tldextract.extract(domain_name)
+        sld = extracted.domain
+        tld = extracted.suffix
+
         # Error codes for getEmailForwarding method
         error_codes = {
             **COMMON_DNS_ERRORS,
@@ -459,7 +548,6 @@ class DnsAPI:
             }
         }
 
-        sld, tld = self._split_domain_name(domain_name)
         params = {"DomainName": sld, "TLD": tld}
 
         # Make the API call with centralized error handling
@@ -470,39 +558,43 @@ class DnsAPI:
             {"domain_name": domain_name}
         )
 
-        # Field mapping for email forwarding entries
-        field_mapping = {
-            "@MailBox": "mailbox",
-            "@ForwardTo": "forward_to"
+        # Use normalized API response for consistency
+        result = {
+            "domain": domain_name,
+            "forwards": []
         }
 
-        # Get the domain from the result
-        domain = response.get("DomainEmailForwarding", {}
-                              ).get("@Domain", domain_name)
+        # Extract domain from result if available
+        if "DomainEmailForwarding" in response and "@Domain" in response["DomainEmailForwarding"]:
+            result["domain"] = response["DomainEmailForwarding"]["@Domain"]
 
-        # Extract and normalize the forwarding entries
-        forwards = []
+        # Process forwards using normalize_api_response for consistency
         if "Forward" in response.get("DomainEmailForwarding", {}):
-            forwarding_data = response["DomainEmailForwarding"]["Forward"]
-            if isinstance(forwarding_data, list):
-                for forward in forwarding_data:
+            forwards_data = response["DomainEmailForwarding"]["Forward"]
+
+            # Define field mapping for normalization
+            field_mapping = {
+                "@MailBox": "mailbox",
+                "@ForwardTo": "forward_to"
+            }
+
+            # Handle both single item and list
+            if isinstance(forwards_data, list):
+                for forward in forwards_data:
                     normalized = {}
                     for api_field, norm_field in field_mapping.items():
                         if api_field in forward:
                             normalized[norm_field] = forward[api_field]
-                    forwards.append(normalized)
+                    result["forwards"].append(normalized)
             else:
                 # Single forwarding entry
                 normalized = {}
                 for api_field, norm_field in field_mapping.items():
-                    if api_field in forwarding_data:
-                        normalized[norm_field] = forwarding_data[api_field]
-                forwards.append(normalized)
+                    if api_field in forwards_data:
+                        normalized[norm_field] = forwards_data[api_field]
+                result["forwards"].append(normalized)
 
-        return {
-            "domain": domain,
-            "forwards": forwards
-        }
+        return result
 
     def set_email_forwarding(self, domain_name: str, forwards: List[Dict[str, str]]) -> Dict[str, Any]:
         """
@@ -525,6 +617,44 @@ class DnsAPI:
         Raises:
             NamecheapException: If the API returns an error
         """
+        # Validate inputs
+        if not domain_name or not isinstance(domain_name, str):
+            raise ValueError("Domain name must be a non-empty string")
+
+        if not isinstance(forwards, list):
+            raise ValueError("Forwards must be a list")
+
+        # Validate each forward entry
+        for i, forward in enumerate(forwards):
+            if not isinstance(forward, dict):
+                raise ValueError(f"Forward at index {i} must be a dictionary")
+
+            if "mailbox" not in forward:
+                raise ValueError(
+                    f"Forward at index {i} is missing required 'mailbox' field")
+
+            if "forward_to" not in forward:
+                raise ValueError(
+                    f"Forward at index {i} is missing required 'forward_to' field")
+
+            if not isinstance(forward["mailbox"], str) or not forward["mailbox"].strip():
+                raise ValueError(
+                    f"Forward at index {i} has invalid 'mailbox' (must be a non-empty string)")
+
+            if not isinstance(forward["forward_to"], str) or not forward["forward_to"].strip():
+                raise ValueError(
+                    f"Forward at index {i} has invalid 'forward_to' (must be a non-empty string)")
+
+            # Basic email validation for forward_to
+            if "@" not in forward["forward_to"]:
+                raise ValueError(
+                    f"Forward at index {i} has invalid 'forward_to' email format")
+
+        # Use tldextract to split the domain
+        extracted = tldextract.extract(domain_name)
+        sld = extracted.domain
+        tld = extracted.suffix
+
         # Error codes for setEmailForwarding method
         error_codes = {
             **COMMON_DNS_ERRORS,
@@ -546,7 +676,6 @@ class DnsAPI:
             }
         }
 
-        sld, tld = self._split_domain_name(domain_name)
         params = {"DomainName": sld, "TLD": tld}
 
         # Add forwards to parameters

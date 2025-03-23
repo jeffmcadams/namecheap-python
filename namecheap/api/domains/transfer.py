@@ -2,6 +2,7 @@
 Domain transfer operations for domains API
 """
 from typing import Any, Dict, List, Optional
+import tldextract
 
 # Common error codes shared across transfer operations
 COMMON_TRANSFER_ERRORS = {
@@ -31,13 +32,6 @@ class TransferAPI:
             client: The Namecheap API client instance
         """
         self.client = client
-
-    def _split_domain_name(self, domain_name: str):
-        """Split domain name into SLD and TLD parts"""
-        parts = domain_name.split(".")
-        sld = parts[0]
-        tld = ".".join(parts[1:])
-        return sld, tld
 
     def create(
         self,
@@ -96,7 +90,9 @@ class TransferAPI:
             }
         }
 
-        sld, tld = self._split_domain_name(domain_name)
+        extract = tldextract.extract(domain_name)
+        sld, tld = extract.domain, extract.suffix
+
         params = {
             "DomainName": domain_name,
             "Years": years

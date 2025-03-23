@@ -34,23 +34,6 @@ class TestNamecheapClient(unittest.TestCase):
         )
         self.assertEqual(self.client.debug, False)
 
-    def test_split_domain_name(self):
-        """Test domain name splitting"""
-        # Test simple domain
-        sld, tld = self.client._split_domain_name("example.com")
-        self.assertEqual(sld, "example")
-        self.assertEqual(tld, "com")
-
-        # Test subdomain (should not be split)
-        sld, tld = self.client._split_domain_name("sub.example.com")
-        self.assertEqual(sld, "sub")
-        self.assertEqual(tld, "example.com")
-
-        # Test multi-part TLD
-        sld, tld = self.client._split_domain_name("example.co.uk")
-        self.assertEqual(sld, "example")
-        self.assertEqual(tld, "co.uk")
-
     @patch("requests.get")
     def test_make_request(self, mock_get):
         """Test making a request to the API"""
@@ -79,12 +62,14 @@ class TestNamecheapClient(unittest.TestCase):
         # Verify request was made correctly
         mock_get.assert_called_once()
         args, kwargs = mock_get.call_args
-        self.assertEqual(args[0], "https://api.sandbox.namecheap.com/xml.response")
+        self.assertEqual(
+            args[0], "https://api.sandbox.namecheap.com/xml.response")
         self.assertEqual(kwargs["params"]["ApiUser"], "test_user")
         self.assertEqual(kwargs["params"]["ApiKey"], "test_key")
         self.assertEqual(kwargs["params"]["UserName"], "test_user")
         self.assertEqual(kwargs["params"]["ClientIp"], "127.0.0.1")
-        self.assertEqual(kwargs["params"]["Command"], "namecheap.domains.check")
+        self.assertEqual(kwargs["params"]["Command"],
+                         "namecheap.domains.check")
         self.assertEqual(kwargs["params"]["DomainList"], "example.com")
 
         # Verify result is parsed correctly
@@ -163,19 +148,24 @@ class TestNamecheapClient(unittest.TestCase):
         # Verify request
         mock_get.assert_called_once()
         args, kwargs = mock_get.call_args
-        self.assertEqual(kwargs["params"]["Command"], "namecheap.domains.check")
-        self.assertEqual(kwargs["params"]["DomainList"], "example.com,example.net")
+        self.assertEqual(kwargs["params"]["Command"],
+                         "namecheap.domains.check")
+        self.assertEqual(kwargs["params"]["DomainList"],
+                         "example.com,example.net")
 
         # Verify results
         self.assertEqual(len(result["DomainCheckResult"]), 2)
-        self.assertEqual(result["DomainCheckResult"][0]["Domain"], "example.com")
+        self.assertEqual(result["DomainCheckResult"]
+                         [0]["Domain"], "example.com")
         self.assertEqual(result["DomainCheckResult"][0]["Available"], False)
-        self.assertEqual(result["DomainCheckResult"][1]["Domain"], "example.net")
+        self.assertEqual(result["DomainCheckResult"]
+                         [1]["Domain"], "example.net")
         self.assertEqual(result["DomainCheckResult"][1]["Available"], True)
 
         # Test with too many domains
         with self.assertRaises(ValueError) as context:
-            self.client.domains_check(["domain" + str(i) + ".com" for i in range(51)])
+            self.client.domains_check(
+                ["domain" + str(i) + ".com" for i in range(51)])
         self.assertIn("Maximum of 50 domains", str(context.exception))
 
     @patch("namecheap.client.NamecheapClient._make_request")
@@ -264,8 +254,10 @@ class TestNamecheapClient(unittest.TestCase):
 
         # Test with valid hosts
         hosts = [
-            {"HostName": "@", "RecordType": "A", "Address": "192.0.2.1", "TTL": "1800"},
-            {"HostName": "www", "RecordType": "CNAME", "Address": "@", "TTL": "1800"},
+            {"HostName": "@", "RecordType": "A",
+                "Address": "192.0.2.1", "TTL": "1800"},
+            {"HostName": "www", "RecordType": "CNAME",
+                "Address": "@", "TTL": "1800"},
             {
                 "HostName": "mail",
                 "RecordType": "MX",
