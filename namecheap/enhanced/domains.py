@@ -99,16 +99,22 @@ class EnhancedDomainsAPI:
                                             try:
                                                 price_value = float(
                                                     price_data["Price"])
-                                                if self.client.debug:
-                                                    print(
-                                                        f"Found price for {tld}: ${price_value}")
+                                                self.client.log(
+                                                    "PRICING.INFO",
+                                                    f"Found price for {tld}: ${price_value}",
+                                                    "DEBUG"
+                                                )
                                                 pricing_info[tld] = price_value
                                                 break
                                             except (ValueError, TypeError):
                                                 pass
             except Exception as e:
-                if self.client.debug:
-                    print(f"Error getting pricing for {tld}: {str(e)}")
+                self.client.log(
+                    "PRICING.ERROR",
+                    f"Error getting pricing for {tld}",
+                    "ERROR",
+                    {"Error": str(e)}
+                )
 
         # Combine the results
         result = {"DomainCheckResult": []}

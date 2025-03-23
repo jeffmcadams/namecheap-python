@@ -3,6 +3,22 @@ Domain transfer operations for domains API
 """
 from typing import Any, Dict, List, Optional
 
+# Common error codes shared across transfer operations
+COMMON_TRANSFER_ERRORS = {
+    "2019166": {
+        "explanation": "Transfer ID not found",
+        "fix": "Verify the transfer ID is correct and exists in your account"
+    },
+    "2016166": {
+        "explanation": "Domain is not associated with your account",
+        "fix": "Check that the domain is registered with your Namecheap account"
+    },
+    "UNKNOWN_ERROR": {
+        "explanation": "Transfer operation failed",
+        "fix": "Verify all parameters are correct and try again"
+    }
+}
+
 
 class TransferAPI:
     """Transfer API methods for domains namespace"""
@@ -34,6 +50,14 @@ class TransferAPI:
         """
         Transfers a domain to Namecheap
 
+        API Documentation: https://www.namecheap.com/support/api/methods/domains-transfer/create/
+
+        Error Codes:
+            2011170: Validation error from promotion code
+            2011280: TLD is not valid
+            2030280: TLD is not supported for API
+            2528166: Order creation failed
+
         Args:
             domain_name: Domain to transfer
             years: Number of years to renew during transfer (default: 1)
@@ -47,6 +71,31 @@ class TransferAPI:
         Raises:
             NamecheapException: If the API returns an error
         """
+        # Error codes for transfer creation
+        error_codes = {
+            **COMMON_TRANSFER_ERRORS,
+            "2011170": {
+                "explanation": "Validation error from promotion code",
+                "fix": "Ensure the promotion code is valid and applicable for domain transfers"
+            },
+            "2011280": {
+                "explanation": "TLD is not valid",
+                "fix": "Check that the domain's top-level domain (TLD) is supported for transfers"
+            },
+            "2030280": {
+                "explanation": "TLD is not supported for API",
+                "fix": "Verify that the domain's TLD is among those allowed for API transfers"
+            },
+            "2528166": {
+                "explanation": "Order creation failed",
+                "fix": "Double-check all transfer parameters and try the request again"
+            },
+            "UNKNOWN_ERROR": {
+                "explanation": "Transfer creation failed",
+                "fix": "Verify that '{domain_name}' exists and all parameters are correct"
+            }
+        }
+
         sld, tld = self._split_domain_name(domain_name)
         params = {
             "DomainName": domain_name,
@@ -62,11 +111,23 @@ class TransferAPI:
         # Add any additional parameters
         params.update(kwargs)
 
-        return self.client._make_request("namecheap.domains.transfer.create", params)
+        # Make the API call with centralized error handling
+        return self.client._make_request(
+            "namecheap.domains.transfer.create",
+            params,
+            error_codes,
+            {"domain_name": domain_name}
+        )
 
     def get_status(self, transfer_id: int) -> Dict[str, Any]:
         """
         Gets the status of a domain transfer
+
+        API Documentation: https://www.namecheap.com/support/api/methods/domains-transfer/get-status/
+
+        Error Codes:
+            2019166: Transfer ID not found
+            4019329: TransferStatus not available
 
         Args:
             transfer_id: The transfer ID to check
@@ -77,12 +138,38 @@ class TransferAPI:
         Raises:
             NamecheapException: If the API returns an error
         """
+        # Error codes for getting transfer status
+        error_codes = {
+            **COMMON_TRANSFER_ERRORS,
+            "4019329": {
+                "explanation": "TransferStatus not available",
+                "fix": "Ensure the transfer ID is correct and in a valid state for status retrieval"
+            },
+            "UNKNOWN_ERROR": {
+                "explanation": "Failed to get transfer status",
+                "fix": "Verify that transfer ID '{transfer_id}' exists and is valid"
+            }
+        }
+
         params = {"TransferID": transfer_id}
-        return self.client._make_request("namecheap.domains.transfer.getStatus", params)
+
+        # Make the API call with centralized error handling
+        return self.client._make_request(
+            "namecheap.domains.transfer.getStatus",
+            params,
+            error_codes,
+            {"transfer_id": transfer_id}
+        )
 
     def update_status(self, transfer_id: int, resubmit: bool = False) -> Dict[str, Any]:
         """
         Updates the status of a domain transfer
+
+        API Documentation: https://www.namecheap.com/support/api/methods/domains-transfer/update-status/
+
+        Error Codes:
+            2019166: Transfer ID not found
+            2019167: Invalid transfer status update
 
         Args:
             transfer_id: The transfer ID to update
@@ -94,11 +181,31 @@ class TransferAPI:
         Raises:
             NamecheapException: If the API returns an error
         """
+        # Error codes for updating transfer status
+        error_codes = {
+            **COMMON_TRANSFER_ERRORS,
+            "2019167": {
+                "explanation": "Invalid transfer status update",
+                "fix": "The transfer may be in a state that cannot be updated or resubmitted"
+            },
+            "UNKNOWN_ERROR": {
+                "explanation": "Failed to update transfer status",
+                "fix": "Verify that transfer ID '{transfer_id}' exists and is valid"
+            }
+        }
+
         params = {
             "TransferID": transfer_id,
             "Resubmit": "true" if resubmit else "false"
         }
-        return self.client._make_request("namecheap.domains.transfer.updateStatus", params)
+
+        # Make the API call with centralized error handling
+        return self.client._make_request(
+            "namecheap.domains.transfer.updateStatus",
+            params,
+            error_codes,
+            {"transfer_id": transfer_id}
+        )
 
     def get_list(
         self,
@@ -109,6 +216,12 @@ class TransferAPI:
     ) -> Dict[str, Any]:
         """
         Gets the list of domain transfers
+
+        API Documentation: https://www.namecheap.com/support/api/methods/domains-transfer/get-list/
+
+        Error Codes:
+            2011166: Invalid request parameters
+            2012167: Maximum page size exceeded
 
         Args:
             page: Page number to return (default: 1)
@@ -123,6 +236,23 @@ class TransferAPI:
             ValueError: If parameters are invalid
             NamecheapException: If the API returns an error
         """
+        # Error codes for listing transfers
+        error_codes = {
+            **COMMON_TRANSFER_ERRORS,
+            "2011166": {
+                "explanation": "Invalid request parameters",
+                "fix": "Check the format of all parameters in your request"
+            },
+            "2012167": {
+                "explanation": "Maximum page size exceeded",
+                "fix": "Reduce the page size to a maximum of 100"
+            },
+            "UNKNOWN_ERROR": {
+                "explanation": "Failed to get transfer list",
+                "fix": "Verify that all parameters are valid and try again"
+            }
+        }
+
         if page_size > 100:
             raise ValueError("Maximum page size is 100")
 
@@ -130,7 +260,7 @@ class TransferAPI:
             "TRANSFERDATE",
             "TRANSFERDATE_DESC",
             "DOMAINNAME",
-            "DOMAINNAME_DESC"
+            "DOMAINNAME_DESC",
         ]
         if sort_by not in valid_sort_options:
             raise ValueError(f"sort_by must be one of {valid_sort_options}")
@@ -143,7 +273,13 @@ class TransferAPI:
             "Page": page,
             "PageSize": page_size,
             "SortBy": sort_by,
-            "ListType": list_type
+            "ListType": list_type,
         }
 
-        return self.client._make_request("namecheap.domains.transfer.getList", params)
+        # Make the API call with centralized error handling
+        return self.client._make_request(
+            "namecheap.domains.transfer.getList",
+            params,
+            error_codes,
+            {}
+        )

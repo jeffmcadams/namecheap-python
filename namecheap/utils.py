@@ -3,15 +3,19 @@ Utility functions to help set up and use the Namecheap API client
 """
 
 import os
+import datetime
 
 # Import client and exceptions only when needed to avoid circular imports
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, TypeVar, Callable, cast
 
 import requests
 from dotenv import find_dotenv, load_dotenv
 
 if TYPE_CHECKING:
     from .client import NamecheapClient
+
+# Type for the generic response
+T = TypeVar('T', Dict[str, Any], List[Dict[str, Any]])
 
 
 def get_public_ip() -> Optional[str]:
@@ -80,7 +84,8 @@ def setup_interactive() -> None:
 
     # Ask for values
     username = (
-        input(f"Enter your Namecheap username [{existing_user}]: ") or existing_user
+        input(
+            f"Enter your Namecheap username [{existing_user}]: ") or existing_user
     )
     api_key = (
         input(
@@ -89,7 +94,8 @@ def setup_interactive() -> None:
         or existing_key
     )
     client_ip = (
-        input(f"Enter your whitelisted IP address [{existing_ip}]: ") or existing_ip
+        input(
+            f"Enter your whitelisted IP address [{existing_ip}]: ") or existing_ip
     )
 
     use_sandbox = input(
@@ -109,7 +115,8 @@ def setup_interactive() -> None:
     print("\nCredentials saved to .env file.")
 
     # Offer to test the connection
-    test_now = input("\nWould you like to test the API connection now? (y/n): ")
+    test_now = input(
+        "\nWould you like to test the API connection now? (y/n): ")
     if test_now.lower() in ("y", "yes"):
         success = test_api_connection()
         if success:

@@ -2,40 +2,114 @@
 Exceptions for the Namecheap API client
 """
 
+from typing import Dict, Optional, Callable, Any, Union, List
+
 
 class NamecheapException(Exception):
-    """Exception raised for Namecheap API errors"""
+    """
+    Exception raised for errors related to Namecheap API operations.
 
-    def __init__(self, code: str, message: str) -> None:
+    Attributes:
+        code: Error code from Namecheap API or a custom error code
+        message: Error message
+        explanation: Optional explanation of what went wrong
+        fix: Optional suggestion on how to fix the issue
+        raw_response: Optional raw API response for debugging
+        client: Reference to the client that raised the exception
+    """
+
+    def __init__(
+        self,
+        code: str,
+        message: str,
+        client,
+        explanation: Optional[str] = None,
+        fix: Optional[str] = None,
+        raw_response: Optional[str] = None
+    ):
         self.code = code
         self.message = message
-        self.current_ip = None
-        self.is_whitelist_error = "IP is not in the whitelist" in message
+        self.explanation = explanation
+        self.fix = fix
+        self.raw_response = raw_response
+        self.client = client
 
-        # Build the base error message
-        base_message = f"Namecheap API Error {code}: {message}"
+        self.client.log(
+            "API.ERROR",
+            f"API Error {self.code}: {self.message}",
+            "DEBUG",
+            {
+                "code": self.code,
+                "explanation": self.explanation,
+                "fix": self.fix,
+                "has_raw_response": bool(self.raw_response)
+            }
+        )
 
-        # For whitelist errors, get the current IP and enhance the message
-        if self.is_whitelist_error:
-            # Import here to avoid circular imports
-            from .utils import get_public_ip
+        # Create the string representation
+        super().__init__(str(self))
 
-            self.current_ip = get_public_ip()
-            if self.current_ip:
-                base_message += f"\n\nYour current IP ({self.current_ip}) is not whitelisted. Please add it at:"
-                base_message += (
-                    "\nhttps://ap.www.namecheap.com/settings/tools/apiaccess/"
-                )
+    def __str__(self) -> str:
+        """String representation of the exception with all available information"""
+        parts = []
+        parts.append(f"Error {self.code}: {self.message}")
 
-        super().__init__(base_message)
+        if self.explanation:
+            parts.append(f"Explanation: {self.explanation}")
+
+        if self.fix:
+            parts.append(f"Fix: {self.fix}")
+
+        # Include raw response if client debug mode is on
+        if self.client.debug and self.raw_response:
+            parts.append("\nRaw API response:")
+            parts.append(
+                self.raw_response[:1000] + ("..." if len(self.raw_response) > 1000 else ""))
+
+        return "\n".join(parts)
 
     def print_guidance(self) -> None:
         """Print helpful guidance for specific error types"""
-        if self.is_whitelist_error and self.current_ip:
-            print(f"Your current public IP address is: {self.current_ip}")
-            print("\nPlease whitelist this IP in your Namecheap API settings:")
-            print("1. Log in to Namecheap")
-            print("2. Go to Profile > Tools")
-            print("3. Find 'Namecheap API Access' under Business & Dev Tools")
-            print("4. Add this IP to the Whitelisted IPs list")
-            print("5. Update your .env file with this IP")
+        if "IP is not in the whitelist" in self.message:
+            self.client.log(
+                "API.WHITELIST",
+                "IP whitelist error detected",
+                "INFO",
+                {
+                    "Instructions": (
+                        "Please whitelist your IP in your Namecheap API settings:\n"
+                        "1. Log in to Namecheap\n"
+                        "2. Go to Profile > Tools\n"
+                        "3. Find 'Namecheap API Access' under Business & Dev Tools\n"
+                        "4. Add this IP to the Whitelisted IPs list\n"
+                        "5. Update your .env file with this IP"
+                    )
+                }
+            )
+
+
+def format_error_with_context(message: str, context: Dict[str, Any]) -> str:
+    """
+    Format an error message by replacing placeholders with context variables.
+
+    Args:
+        message: The message with placeholders in the format {variable_name}
+        context: Dictionary of context variables to substitute
+
+    Returns:
+        Formatted message with placeholders replaced by context values
+    """
+    if not message or not context:
+        return message
+
+    # Replace placeholders in the message with context values
+    for key, value in context.items():
+        placeholder = f"{{{key}}}"
+        if placeholder in message:
+            message = message.replace(placeholder, str(value))
+
+    return message
+
+
+# Type for error code mappings used by modules
+ErrorCodeMapping = Dict[str, Dict[str, str]]

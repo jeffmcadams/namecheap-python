@@ -1,16 +1,35 @@
 #!/usr/bin/env python3
 """
 DNS management tool for Namecheap domains
+
+A command-line tool to manage DNS records for domains hosted on Namecheap's nameservers.
+Allows listing, adding, deleting, importing, and exporting DNS records.
+
+Examples:
+    # List all DNS records for a domain
+    python dns_tool.py list example.com
+    
+    # Add an A record
+    python dns_tool.py add example.com --name www --type A --value 192.168.1.1 
+    
+    # Delete a record
+    python dns_tool.py delete example.com --name www --type A
+    
+    # Export records to JSON
+    python dns_tool.py export example.com records.json
+    
+    # Import records from JSON
+    python dns_tool.py import example.com records.json
 """
 
 import argparse
 import json
+import os
 
 from examples.utils.print_table import print_table
 from namecheap import NamecheapClient, NamecheapException
 
 
-# Helper functions
 def confirm_action(message, default=False):
     """
     Ask for user confirmation before proceeding with an action.
@@ -34,32 +53,49 @@ def confirm_action(message, default=False):
     return response.startswith("y")
 
 
-def init_client():
-    """Initialize the Namecheap API client"""
-    # The client will automatically load credentials from environment variables
-    return NamecheapClient()
+def display_record(record, index=None):
+    """Display record details in a consistent format"""
+    prefix = f"\nRecord {index}:" if index is not None else ""
+    print(f"{prefix}")
+    print(f"  Name: {record['Name']}")
+    print(f"  Type: {record['Type']}")
+    print(f"  Value: {record['Address']}")
+    print(f"  TTL: {record['TTL']}")
+    if record["Type"] == "MX" and "MXPref" in record:
+        print(f"  Priority: {record['MXPref']}")
 
 
-def list_records(client, domain):
+def list_records(client, domain, show_raw=False):
     """List all DNS records for a domain"""
     try:
-        result = client.domains_dns_get_hosts(domain)
+        if client.debug:
+            print(f"\nAttempting to retrieve DNS records for {domain}...")
 
-        # Extract host records
-        host_records = result.get("DomainDNSGetHostsResult", {}).get("host", [])
-        if not isinstance(host_records, list):
-            host_records = [host_records]
+        # Get records now returns a clean list of normalized records
+        records = client.domains.dns.get_hosts(domain)
+
+        if client.debug:
+            print(f"\nFound {len(records)} DNS records")
+
+        # Display raw record data if requested
+        if show_raw:
+            print("\nRaw record data:")
+            for i, record in enumerate(records):
+                print(f"\nRecord {i+1}:")
+                print(json.dumps(record, indent=2))
+            print("\n")
 
         # Prepare data for table
         headers = ["Name", "Type", "TTL", "Priority", "Address/Value"]
         rows = []
 
-        for record in host_records:
-            name = record.get("Name", "")
-            record_type = record.get("Type", "")
-            ttl = record.get("TTL", "")
-            mx_pref = record.get("MXPref", "") if record_type == "MX" else ""
-            address = record.get("Address", "")
+        for record in records:
+            # Use the original API field names
+            name = record["Name"]
+            record_type = record["Type"]
+            ttl = record["TTL"]
+            mx_pref = record["MXPref"] if record_type == "MX" else ""
+            address = record["Address"]
 
             rows.append([name, record_type, ttl, mx_pref, address])
 
@@ -68,191 +104,159 @@ def list_records(client, domain):
         print_table(headers, rows)
 
     except NamecheapException as e:
-        print(f"API Error ({e.code}): {e.message}")
-    except Exception as e:
-        print(f"Error: {e}")
+        print(e)
 
 
 def add_record(client, domain, record_data, args=None):
     """Add a new DNS record to a domain"""
     try:
-        # First, get existing records
-        result = client.domains_dns_get_hosts(domain)
+        # Get current records first
+        current_records = client.domains.dns.get_hosts(domain)
 
-        # Extract host records
-        host_records = result.get("DomainDNSGetHostsResult", {}).get("host", [])
-        if not isinstance(host_records, list):
-            host_records = [host_records]
+        if client.debug:
+            print(f"\nCurrent records: {len(current_records)}")
 
-        # Create new record
+        # Create record in Namecheap API format
         new_record = {
-            "HostName": record_data.get("name", "@"),
-            "RecordType": record_data.get("type", "A"),
-            "Address": record_data.get("value", ""),
-            "TTL": record_data.get("ttl", "1800"),
+            "Name": record_data["name"],
+            "Type": record_data["type"],
+            "Address": record_data["value"],
+            "TTL": record_data["ttl"]
         }
 
         # Add MXPref for MX records
-        if new_record["RecordType"] == "MX":
-            new_record["MXPref"] = record_data.get("priority", "10")
+        if new_record["Type"].upper() == "MX":
+            new_record["MXPref"] = record_data["priority"]
 
-        # Ask for confirmation before making changes (unless force flag is used)
-        print("\nYou are about to add a new DNS record:")
-        print(f"  Type: {new_record['RecordType']}")
-        print(f"  Host: {new_record['HostName']}.{domain}")
-        print(f"  Value: {new_record['Address']}")
-        print(f"  TTL: {new_record['TTL']}")
-        if new_record["RecordType"] == "MX":
-            print(f"  Priority: {new_record['MXPref']}")
+        # Combine with existing records
+        updated_records = current_records + [new_record]
 
-        if not getattr(args, "force", False) and not confirm_action(
-            "Do you want to proceed?"
-        ):
-            print("Operation cancelled.")
-            return
+        # Confirm if not forced
+        if args and not args.force:
+            display_record(new_record)
 
-        # Add new record to existing records
-        host_records.append(new_record)
+            if not confirm_action("Add this record?"):
+                print("Operation cancelled.")
+                return
 
-        # Update the DNS records
-        result = client.domains_dns_set_hosts(domain, host_records)
+        # Update the records
+        result = client.domains.dns.set_hosts(domain, updated_records)
 
-        if result.get("DomainDNSSetHostsResult", {}).get("IsSuccess"):
-            print(
-                f"Successfully added {new_record['RecordType']} record for {new_record['HostName']}.{domain}"
-            )
+        if result["success"]:
+            print(f"\nSuccess! Record added to {domain}")
         else:
-            print("Failed to add DNS record")
+            print(
+                f"\nWarning: Operation completed but with warnings: {result['warnings']}")
 
     except NamecheapException as e:
-        print(f"API Error ({e.code}): {e.message}")
-    except Exception as e:
-        print(f"Error: {e}")
+        print(e)
 
 
 def delete_record(client, domain, record_data, args=None):
     """Delete a DNS record from a domain"""
     try:
-        # First, get existing records
-        result = client.domains_dns_get_hosts(domain)
+        # Get current records
+        current_records = client.domains.dns.get_hosts(domain)
 
-        # Extract host records
-        host_records = result.get("DomainDNSGetHostsResult", {}).get("host", [])
-        if not isinstance(host_records, list):
-            host_records = [host_records]
+        if client.debug:
+            print(f"\nFetched {len(current_records)} records")
 
-        # Find the record to delete
-        name = record_data.get("name", "")
-        record_type = record_data.get("type", "")
-        value = record_data.get("value", "")
-
-        filtered_records = []
+        # Find matching records
+        records_to_keep = []
         records_to_delete = []
 
-        for record in host_records:
-            # If this record matches our criteria, add to delete list
-            if (
-                record.get("Name") == name
-                and record.get("Type") == record_type
-                and (not value or record.get("Address") == value)
-            ):
-                records_to_delete.append(record)
+        for record in current_records:
+            # Check if this record matches the criteria to delete
+            if record["Name"] == record_data["name"] and record["Type"] == record_data["type"]:
+                # If value is specified, it must match too
+                if record_data["value"] and record["Address"] != record_data["value"]:
+                    records_to_keep.append(record)
+                else:
+                    records_to_delete.append(record)
             else:
-                filtered_records.append(record)
+                records_to_keep.append(record)
 
+        # Check if any records were found to delete
         if not records_to_delete:
-            print(f"No matching {record_type} record found for {name}.{domain}")
-            return
-
-        # Ask for confirmation before deleting
-        print("\nYou are about to delete the following DNS record(s):")
-        for i, record in enumerate(records_to_delete, 1):
-            print(f"\n  Record #{i}:")
-            print(f"    Type: {record.get('Type')}")
-            print(f"    Host: {record.get('Name')}.{domain}")
-            print(f"    Value: {record.get('Address')}")
-            print(f"    TTL: {record.get('TTL')}")
-            if record.get("Type") == "MX":
-                print(f"    Priority: {record.get('MXPref')}")
-
-        if not getattr(args, "force", False) and not confirm_action(
-            f"Do you want to delete {len(records_to_delete)} record(s)?"
-        ):
-            print("Operation cancelled.")
-            return
-
-        # Update the DNS records
-        result = client.domains_dns_set_hosts(domain, filtered_records)
-
-        if result.get("DomainDNSSetHostsResult", {}).get("IsSuccess"):
             print(
-                f"Successfully deleted {len(records_to_delete)} {record_type} record(s) for {name}.{domain}"
-            )
+                f"No matching records found with name={record_data['name']} and type={record_data['type']}")
+            return
+
+        # Confirm deletion unless force flag is used
+        if args and not args.force:
+            print(f"\nFound {len(records_to_delete)} records to delete:")
+            for i, record in enumerate(records_to_delete):
+                display_record(record, i+1)
+
+            if not confirm_action(f"Delete {len(records_to_delete)} record(s)?", default=False):
+                print("Operation cancelled.")
+                return
+
+        # Update records (removing the ones to delete)
+        result = client.domains.dns.set_hosts(domain, records_to_keep)
+
+        if result["success"]:
+            print(
+                f"\nSuccess! {len(records_to_delete)} record(s) deleted from {domain}")
         else:
-            print("Failed to delete DNS record(s)")
+            print(
+                f"\nWarning: Operation completed but with warnings: {result['warnings']}")
 
     except NamecheapException as e:
-        print(f"API Error ({e.code}): {e.message}")
-    except Exception as e:
-        print(f"Error: {e}")
+        print(e)
 
 
 def import_records(client, domain, json_file, args=None):
     """Import DNS records from a JSON file"""
     try:
-        # Read the JSON file
-        with open(json_file) as f:
+        # Load records from JSON file
+        with open(json_file, "r") as f:
             records = json.load(f)
 
         if not isinstance(records, list):
-            print("Error: JSON file must contain an array of DNS records")
-            return
+            raise ValueError("JSON file must contain a list of DNS records")
 
-        # Convert to Namecheap format
+        # Normalize records to ensure they have required fields
         host_records = []
         for record in records:
-            new_record = {
-                "HostName": record.get("name", "@"),
-                "RecordType": record.get("type", "A"),
-                "Address": record.get("value", ""),
-                "TTL": str(record.get("ttl", 1800)),
+            # Ensure the record uses the Namecheap API field names
+            host_record = {
+                "Name": record.get("Name", "@"),
+                "Type": record.get("Type", "A"),
+                "Address": record.get("Address", ""),
+                "TTL": record.get("TTL", "1800"),
             }
 
             # Add MXPref for MX records
-            if new_record["RecordType"] == "MX":
-                new_record["MXPref"] = str(record.get("priority", 10))
+            if host_record["Type"] == "MX":
+                host_record["MXPref"] = record.get("MXPref", "10")
 
-            host_records.append(new_record)
+            host_records.append(host_record)
 
-        # Display summary of records to be imported
-        print(f"\nReady to import {len(host_records)} DNS records for {domain}:")
-        record_types = {}
-        for record in host_records:
-            record_type = record["RecordType"]
-            record_types[record_type] = record_types.get(record_type, 0) + 1
+        # Display records that will be imported
+        print(f"\nImporting {len(host_records)} DNS records to {domain}:")
+        for idx, record in enumerate(host_records, 1):
+            display_record(record, idx)
 
-        for record_type, count in record_types.items():
-            print(f"  {count} {record_type} record(s)")
+        # Ask for confirmation before making changes (unless force flag is used)
+        if args and args.force:
+            proceed = True
+        else:
+            proceed = confirm_action(
+                "This will replace ALL existing DNS records. Continue?", default=False
+            )
 
-        # Ask for confirmation before proceeding (unless force flag is used)
-        if not getattr(args, "force", False) and not confirm_action(
-            "Do you want to proceed with the import?"
-        ):
-            print("Import operation cancelled.")
+        if not proceed:
+            print("Operation aborted.")
             return
 
-        # Update the DNS records
-        result = client.domains_dns_set_hosts(domain, host_records)
+        # Update records
+        result = client.domains.dns.set_hosts(domain, host_records)
 
-        if result.get("DomainDNSSetHostsResult", {}).get("IsSuccess"):
-            print(f"Successfully imported {len(host_records)} DNS records for {domain}")
-        else:
-            print("Failed to import DNS records")
+        print(f"\n{len(host_records)} records imported successfully to {domain}")
 
-    except json.JSONDecodeError:
-        print(f"Error: {json_file} is not a valid JSON file")
     except NamecheapException as e:
-        print(f"API Error ({e.code}): {e.message}")
+        print(e)
     except Exception as e:
         print(f"Error: {e}")
 
@@ -260,132 +264,122 @@ def import_records(client, domain, json_file, args=None):
 def export_records(client, domain, json_file):
     """Export DNS records to a JSON file"""
     try:
-        # Get the DNS records
-        result = client.domains_dns_get_hosts(domain)
+        # Get existing records (already normalized)
+        records = client.domains.dns.get_hosts(domain)
 
-        # Extract host records
-        host_records = result.get("DomainDNSGetHostsResult", {}).get("host", [])
-        if not isinstance(host_records, list):
-            host_records = [host_records]
-
-        # Convert to a simpler format
-        records = []
-        for record in host_records:
-            new_record = {
-                "name": record.get("Name", ""),
-                "type": record.get("Type", ""),
-                "value": record.get("Address", ""),
-                "ttl": int(record.get("TTL", 1800)),
-            }
-
-            # Add priority for MX records
-            if record.get("Type") == "MX":
-                new_record["priority"] = int(record.get("MXPref", 10))
-
-            records.append(new_record)
-
-        # Write to the JSON file
+        # Write to JSON file
         with open(json_file, "w") as f:
             json.dump(records, f, indent=2)
 
-        print(f"Successfully exported {len(records)} DNS records to {json_file}")
+        print(f"\n{len(records)} DNS records exported to {json_file}")
 
     except NamecheapException as e:
-        print(f"API Error ({e.code}): {e.message}")
+        print(e)
     except Exception as e:
         print(f"Error: {e}")
 
 
 def main():
-    """Main entry point for the DNS tool"""
-    parser = argparse.ArgumentParser(description="Namecheap DNS Management Tool")
-    subparsers = parser.add_subparsers(dest="command", help="Command to execute")
+    """Main entry point"""
+    # Initialize main parser
+    parser = argparse.ArgumentParser(
+        description="Namecheap DNS Management Tool")
 
-    # List records command
-    list_parser = subparsers.add_parser("list", help="List DNS records for a domain")
+    # Add global arguments
+    parser.add_argument('-d', '--debug', action='store_true',
+                        help='Enable debug mode for API calls')
+
+    # Create subparsers
+    subparsers = parser.add_subparsers(
+        dest="command", help="Command to execute")
+    subparsers.required = True
+
+    # List command
+    list_parser = subparsers.add_parser(
+        "list", help="List DNS records for a domain")
     list_parser.add_argument("domain", help="Domain name")
+    list_parser.add_argument('--show-raw', action='store_true',
+                             help='Show raw record data including metadata fields')
 
-    # Add record command
-    add_parser = subparsers.add_parser("add", help="Add a DNS record to a domain")
+    # Add command
+    add_parser = subparsers.add_parser(
+        "add", help="Add a DNS record to a domain")
     add_parser.add_argument("domain", help="Domain name")
-    add_parser.add_argument("--name", default="@", help="Host name (@ for root)")
+    add_parser.add_argument("--name", default="@",
+                            help="Record name (@ for root)")
     add_parser.add_argument(
-        "--type",
-        choices=["A", "AAAA", "CNAME", "MX", "TXT", "URL", "URL301", "FRAME"],
-        required=True,
-        help="Record type",
+        "--type", default="A", help="Record type (A, CNAME, MX, TXT, etc.)"
     )
-    add_parser.add_argument("--value", required=True, help="Record value/address")
+    add_parser.add_argument("--value", required=True,
+                            help="Record value/address")
+    add_parser.add_argument("--ttl", default="1800", help="Time to live")
     add_parser.add_argument(
-        "--ttl", default=1800, type=int, help="Time to live in seconds"
-    )
-    add_parser.add_argument(
-        "--priority", default=10, type=int, help="Priority (for MX records)"
+        "--priority", default="10", help="MX priority (only for MX records)"
     )
     add_parser.add_argument(
-        "--force", action="store_true", help="Skip confirmation prompt"
+        "--force", "-f", action="store_true", help="Skip confirmation prompt"
     )
 
-    # Delete record command
+    # Delete command
     delete_parser = subparsers.add_parser(
         "delete", help="Delete a DNS record from a domain"
     )
     delete_parser.add_argument("domain", help="Domain name")
-    delete_parser.add_argument("--name", required=True, help="Host name to delete")
     delete_parser.add_argument(
-        "--type",
-        required=True,
-        choices=["A", "AAAA", "CNAME", "MX", "TXT", "URL", "URL301", "FRAME"],
-        help="Record type to delete",
+        "--name", required=True, help="Record name to delete")
+    delete_parser.add_argument(
+        "--type", required=True, help="Record type to delete (A, CNAME, MX, TXT, etc.)"
     )
     delete_parser.add_argument(
         "--value",
-        help="Record value/address (if specified, only deletes records with this value)",
+        help="Specific record value to delete (optional, will delete all matching name/type if not specified)",
     )
     delete_parser.add_argument(
-        "--force", action="store_true", help="Skip confirmation prompt"
+        "--force", "-f", action="store_true", help="Skip confirmation prompt"
     )
 
-    # Import records command
+    # Import command
     import_parser = subparsers.add_parser(
         "import", help="Import DNS records from a JSON file"
     )
     import_parser.add_argument("domain", help="Domain name")
-    import_parser.add_argument("json_file", help="JSON file containing DNS records")
     import_parser.add_argument(
-        "--force", action="store_true", help="Skip confirmation prompt"
+        "json_file", help="JSON file to import records from")
+    import_parser.add_argument(
+        "--force", "-f", action="store_true", help="Skip confirmation prompt"
     )
 
-    # Export records command
+    # Export command
     export_parser = subparsers.add_parser(
         "export", help="Export DNS records to a JSON file"
     )
     export_parser.add_argument("domain", help="Domain name")
-    export_parser.add_argument("json_file", help="JSON file to export DNS records to")
+    export_parser.add_argument(
+        "json_file", help="JSON file to export records to")
 
     args = parser.parse_args()
 
-    if not args.command:
-        parser.print_help()
-        return
+    # Initialize client with debug mode using the args object
+    client = NamecheapClient(debug=args.debug)
 
-    # Initialize the client
-    client = init_client()
-
-    # Execute the command
+    # Execute the appropriate command
     if args.command == "list":
-        list_records(client, args.domain)
+        list_records(client, args.domain, getattr(args, 'show_raw', False))
     elif args.command == "add":
         record_data = {
             "name": args.name,
             "type": args.type,
             "value": args.value,
-            "ttl": str(args.ttl),
-            "priority": str(args.priority),
+            "ttl": args.ttl,
+            "priority": args.priority,
         }
         add_record(client, args.domain, record_data, args)
     elif args.command == "delete":
-        record_data = {"name": args.name, "type": args.type, "value": args.value}
+        record_data = {
+            "name": args.name,
+            "type": args.type,
+            "value": args.value,
+        }
         delete_record(client, args.domain, record_data, args)
     elif args.command == "import":
         import_records(client, args.domain, args.json_file, args)
