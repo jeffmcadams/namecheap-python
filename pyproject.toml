@@ -38,8 +38,6 @@ tldextract = ">=3.1.0"
 xmltodict = ">=0.13.0"
 
 [tool.poetry.group.dev.dependencies]
-pytest = ">=7.0.0"
-pytest-cov = ">=3.0.0"
 black = ">=23.0.0"
 isort = ">=5.0.0"
 mypy = ">=1.0.0"
@@ -93,13 +91,10 @@ ignore = [
 ]
 # Per-file ignores
 [tool.ruff.lint.per-file-ignores]
-# Ignore unused variables and imports in tests
-"tests/*.py" = ["F401", "F841"]
 # Ignore f-string without placeholders and unused vars in examples
 "examples/*.py" = ["F541", "F841"]
 
 [tool.poetry.scripts]
 format = "poetry:run_format"
 check = "poetry:run_check"
-test = "pytest:main"
 bump = "namecheap.utils:bump_version"
