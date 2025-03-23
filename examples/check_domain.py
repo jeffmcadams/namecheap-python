@@ -31,24 +31,22 @@ result = client.enhanced.domains.check_with_pricing(args.domains)
 headers = ["Domain", "Available", "Premium", "Price"]
 rows = []
 
-if isinstance(result, dict) and "DomainCheckResult" in result:
-    domains = result["DomainCheckResult"]
-    if not isinstance(domains, list):
-        domains = [domains]  # Handle single domain case
+# The result now contains a DomainCheckResult key with a list of domain results
+domains = result["DomainCheckResult"]
 
-    for domain in domains:
-        available = "Yes" if domain.get("Available") else "No"
-        premium = "Yes" if domain.get("IsPremiumName") else "No"
+for domain in domains:
+    available = "Yes" if domain.get("Available") else "No"
+    premium = "Yes" if domain.get("IsPremiumName") else "No"
 
-        price = domain.get("Price", 0)
+    price = domain.get("Price", 0)
 
-        # If domain is not available, show N/A
-        if domain.get("Available"):
-            price_display = f"${price:.2f}"
-        else:
-            price_display = "N/A"
+    # If domain is not available, show N/A
+    if domain.get("Available"):
+        price_display = f"${price:.2f}"
+    else:
+        price_display = "N/A"
 
-        rows.append([domain.get("Domain"), available, premium, price_display])
+    rows.append([domain.get("Domain"), available, premium, price_display])
 
 print("\nResults:")
 print_table(headers, rows)
