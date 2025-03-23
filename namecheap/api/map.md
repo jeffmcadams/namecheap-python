@@ -1,5 +1,6 @@
+source: https://www.namecheap.com/support/api/methods/
 
-NOTE: These methods work only for the domains registered with Namecheap that are currently present in your Namecheap account.
+NOTE: not all methods are implemented in the current version of the library. The following list is a reference for the original API methods.
 
 domains
 getList — Returns a list of domains for the particular user.
