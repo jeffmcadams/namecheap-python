@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "namecheap-python"
-version = "0.2.2"
+version = "0.2.3"
 description = "A Python SDK for the Namecheap API"
 authors = ["Adrian Galilea <adriangalilea@gmail.com>"]
 license = "MIT"
