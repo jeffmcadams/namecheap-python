@@ -1,5 +1,5 @@
 """
-Namecheap Python API client
+Namecheap API Python client
 
 A Python wrapper for interacting with the Namecheap API.
 
@@ -36,17 +36,9 @@ from .utils import (
     test_api_connection,
 )
 
-try:
-    # Get version from package metadata (installed package)
-    from importlib.metadata import version
+__version__ = "0.2.0"
+__author__ = "Adrian Galilea"
 
-    __version__ = version("namecheap-python")
-except ImportError:
-    # Default version if importlib.metadata is not available (Python < 3.8)
-    __version__ = "0.1.2"
-except Exception:
-    # If package is not installed or version can't be determined
-    __version__ = "0.1.2"
 __all__ = [
     "NamecheapClient",
     "NamecheapException",

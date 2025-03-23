@@ -20,20 +20,26 @@ if len(sys.argv) < 2:
 
 # Create the Namecheap client and check domain availability
 client = NamecheapClient()
-result = client.domains_check(sys.argv[1:])
+result = client.enhanced.domains.check_with_pricing(sys.argv[1:])
 
 # Prepare table data
 headers = ["Domain", "Available", "Premium", "Price"]
 rows = []
 
-for domain in result["DomainCheckResult"]:
-    available = "Yes" if domain["Available"] else "No"
-    premium = "Yes" if domain["IsPremiumName"] else "No"
+# Handle the standard API response format
+if isinstance(result, dict) and "DomainCheckResult" in result:
+    domains = result["DomainCheckResult"]
+    if not isinstance(domains, list):
+        domains = [domains]  # Handle single domain case
 
-    price = domain["PremiumRegistrationPrice"]
-    price_display = "N/A" if price == 0 else f"${price:.2f}"
+    for domain in domains:
+        available = "Yes" if domain.get("Available") else "No"
+        premium = "Yes" if domain.get("IsPremiumName") else "No"
 
-    rows.append([domain["Domain"], available, premium, price_display])
+        price = domain.get("Price", 0)
+        price_display = "N/A" if price == 0 else f"${price:.2f}"
+
+        rows.append([domain.get("Domain"), available, premium, price_display])
 
 # Print the table
 print("\nResults:")
