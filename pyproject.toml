@@ -88,6 +88,9 @@ ignore = [
     "SIM102",
     # Allow raising exceptions without from
     "B904",
+    # Allow using typing annotations of Dict, List etc. for now
+    "UP006",
+    "UP035",
 ]
 # Per-file ignores
 [tool.ruff.lint.per-file-ignores]
