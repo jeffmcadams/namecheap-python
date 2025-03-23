@@ -39,7 +39,7 @@ xmltodict = ">=0.13.0"
 
 [tool.poetry.group.dev.dependencies]
 black = ">=23.0.0"
-isort = ">=5.0.0"
+isort = "==6.0.1"
 mypy = ">=1.0.0"
 ruff = ">=0.0.263"
 pre-commit = ">=3.0.0"

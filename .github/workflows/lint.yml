@@ -25,7 +25,8 @@ jobs:
         poetry run black --check .
     - name: Lint with isort
       run: |
-        poetry run isort --check .
+        pip install isort==6.0.1
+        isort --check .
     - name: Type check with mypy
       run: |
         poetry run mypy namecheap
