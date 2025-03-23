@@ -3,8 +3,6 @@ Utility functions to help set up and use the Namecheap API client
 """
 
 import os
-
-# Import client and exceptions only when needed to avoid circular imports
 from typing import (
     TYPE_CHECKING,
     Any,
