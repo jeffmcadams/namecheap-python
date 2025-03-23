@@ -101,19 +101,45 @@ client = NamecheapClient(
 client = NamecheapClient()  # Automatically loads credentials from environment
 ```
 
+### Client Structure
+
+The SDK provides two ways to interact with the Namecheap API:
+
+1. **Direct API mapping**: Access the API endpoints directly using the same structure as the Namecheap API documentation.
+   ```python
+   # Direct API mapping - matches the Namecheap API documentation
+   result = client.domains.check(["example.com", "example.net"])
+   ```
+
+2. **Enhanced functionality**: Access enhanced methods that combine multiple API calls and provide additional features.
+   ```python
+   # Enhanced functionality with improved data structure
+   result = client.enhanced.domains.check_with_pricing(["example.com", "example.net"])
+   ```
+
 ### Check Domain Availability
 
 ```python
 try:
-    # Check multiple domains at once (up to 50)
+    # Standard API - Check multiple domains at once (up to 50)
     domains_to_check = ["example.com", "example.net", "example.org"]
-    result = client.domains_check(domains_to_check)
+    result = client.domains.check(domains_to_check)
     
     # Process results
     for domain in result.get("DomainCheckResult", []):
         print(f"{domain['Domain']}: {'Available' if domain['Available'] else 'Not available'}")
         if domain['IsPremiumName']:
             print(f"  Premium Domain - Price: {domain['PremiumRegistrationPrice']}")
+            
+    # Enhanced API - Check with comprehensive pricing information
+    result = client.enhanced.domains.check_with_pricing(domains_to_check)
+    
+    for domain in result.get("DomainCheckResult", []):
+        if domain['Available']:
+            print(f"{domain['Domain']}: Available - Price: ${domain['Price']:.2f}")
+        else:
+            print(f"{domain['Domain']}: Not available")
+            
 except NamecheapException as e:
     print(f"API Error: {e}")
 ```
@@ -123,14 +149,12 @@ except NamecheapException as e:
 Running the check_domain.py example produces output like the following:
 
 ```
-Checking availability for: example.com, something123unique.com
-
 Results:
 ------------------------------------------------------------
 Domain                         Available    Premium    Price
 ------------------------------------------------------------
 example.com                    No           No         N/A
-something123unique.com         Yes          No         N/A
+something123unique.com         Yes          No         $11.28
 ```
 
 ### List Your Domains
@@ -272,20 +296,43 @@ Namecheap API has the following rate limits:
 
 The SDK currently supports the following Namecheap API endpoints:
 
-### Domains
-- `domains_check` - Check domain availability
-- `domains_get_list` - Get list of domains in your account
-- `domains_get_contacts` - Get contact information for a domain
-- `domains_create` - Register a new domain
-- `domains_renew` - Renew a domain
-- `domains_get_info` - Get detailed information about a domain
-- `domains_get_tld_list` - Get list of available TLDs
+### Standard API
 
-### DNS
-- `domains_dns_set_custom` - Set custom nameservers for a domain
-- `domains_dns_set_default` - Set default nameservers for a domain
-- `domains_dns_get_hosts` - Get DNS host records for a domain
-- `domains_dns_set_hosts` - Set DNS host records for a domain
+#### Domains
+- `domains.check` - Check domain availability
+- `domains.get_list` - Get list of domains in your account
+- `domains.get_contacts` - Get contact information for a domain
+- `domains.create` - Register a new domain
+- `domains.renew` - Renew a domain
+- `domains.get_info` - Get detailed information about a domain
+- `domains.get_tld_list` - Get list of available TLDs
+
+#### DNS
+- `domains.dns.set_custom` - Set custom nameservers for a domain
+- `domains.dns.set_default` - Set default nameservers for a domain
+- `domains.dns.get_hosts` - Get DNS host records for a domain
+- `domains.dns.set_hosts` - Set DNS host records for a domain
+
+#### Users
+- `users.get_pricing` - Get pricing information for Namecheap products
+- `users.get_balances` - Get account balances
+
+#### SSL
+- `ssl.activate` - Activate an SSL certificate
+- `ssl.get_list` - Get list of SSL certificates
+- `ssl.create` - Purchase an SSL certificate
+- `ssl.get_info` - Get information about an SSL certificate
+
+### Enhanced API
+
+The SDK also provides enhanced functionality that combines multiple API calls:
+
+#### Domains
+- `enhanced.domains.check_with_pricing` - Check domain availability with comprehensive pricing information
+- `enhanced.domains.search_available` - Search for available domains based on a keyword
+
+#### DNS
+- `enhanced.dns.update_records` - Update specific DNS records without affecting others
 
 Additional endpoints from the Namecheap API may be added in future releases based on user needs and contributions.
 

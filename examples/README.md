@@ -22,10 +22,25 @@ NAMECHEAP_USE_SANDBOX=True  # Use False for production
 
 ### Check Domain Availability
 
-This example checks if domains are available for registration:
+This example checks if domains are available for registration and shows their pricing:
 
 ```bash
+# Basic usage
 python -m examples.check_domain example.com yourdomain.com
+
+# With debug output
+python -m examples.check_domain --debug example.com yourdomain.com
+```
+
+The output shows domain availability, premium status, and pricing for available domains:
+
+```
+Results:
+----------------------------------------------------
+Domain             Available  Premium  Price   
+----------------------------------------------------
+example.com        No         No       N/A     
+yourdomain.com     Yes        No       $11.28  
 ```
 
 See `check_domain.py` for implementation details.
@@ -63,4 +78,16 @@ The Namecheap Python SDK supports many other API operations that aren't covered 
 - Renewing domains
 - Setting custom nameservers
 
-For more information on these operations, see the main README.md in the project root or the client.py file.
+The SDK is organized into two main interfaces:
+
+1. **Standard API**: Direct mapping to the Namecheap API methods
+   ```python
+   client.domains.check(["example.com"])
+   ```
+
+2. **Enhanced API**: Enhanced functionality that combines multiple API calls
+   ```python
+   client.enhanced.domains.check_with_pricing(["example.com"])
+   ```
+
+For more information on these operations, see the main README.md in the project root.
