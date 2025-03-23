@@ -11,6 +11,7 @@ from typing import (
     Optional,
     Type,
     TypeVar,
+    Union,
 )
 
 import requests
@@ -406,42 +407,7 @@ def adapt_dict(
     return result
 
 
-def ensure_list(value: Any) -> List[Any]:
-    """
-    Ensures a value is a list.
-
-    Args:
-        value: The value to convert to a list if it's not already
-
-    Returns:
-        value as a list, or [value] if it's not a list
-    """
-    if value is None:
-        return []
-    if isinstance(value, list):
-        return value
-    return [value]
-
-
-def safe_get(dictionary: Dict[str, Any], *keys: str, default: Any = None) -> Any:
-    """
-    Safely get a nested value from a dictionary with a fallback default.
-
-    Args:
-        dictionary: The dictionary to extract data from
-        *keys: One or more key names to navigate through the nested structure
-        default: The default value to return if any key is missing
-
-    Returns:
-        The value at the specified path or the default value
-    """
-    if not dictionary or not isinstance(dictionary, dict):
-        return default
-
-    current = dictionary
-    for key in keys:
-        if not isinstance(current, dict) or key not in current:
-            return default
-        current = current[key]
-
-    return current
+# These functions have been moved to BaseClient and removed from utils.py
+# - safe_get() -> BaseClient.extract_value()
+# - ensure_list() -> BaseClient.ensure_list()
+# - extract_xml_value() -> BaseClient.extract_value()

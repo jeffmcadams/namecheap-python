@@ -170,7 +170,10 @@ class DomainsBaseAPI:
 
         # Use the normalize_api_response method to get results
         results = self.client.normalize_api_response(
-            response=response, result_key="DomainCheckResult", return_type="list"
+            response=response, 
+            result_key="DomainCheckResult", 
+            boolean_fields=["Available", "IsPremiumName"],
+            return_type="list"
         )
 
         # Results are now properly typed as ResponseList (List[Dict[str, object]])

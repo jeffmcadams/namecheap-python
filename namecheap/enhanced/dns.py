@@ -107,28 +107,18 @@ class EnhancedDnsAPI:
             ValueError: If parameters are invalid
             NamecheapException: If the API returns an error
         """
-        # Import utility functions
-        from ..utils import ensure_list
-
         # Get current hosts
         result = self.client.domains.dns.get_hosts(domain_name)
 
-        # Extract existing records safely
-        dns_hosts_result: Dict[str, object] = {}
-        if isinstance(result, dict):
-            hosts_result = result.get("DomainDNSGetHostsResult")
-            if isinstance(hosts_result, dict):
-                dns_hosts_result = hosts_result
-
-        host_entries: List[object] = []
-        if isinstance(dns_hosts_result, dict):
-            entries = dns_hosts_result.get("host")
-            if isinstance(entries, list):
-                host_entries = entries
-            elif entries is not None:
-                host_entries = [entries]
-
-        host_records = ensure_list(host_entries)
+        # Extract existing records using the consolidated extraction methods
+        host_records = self.client.ensure_list(
+            self.client.extract_value(
+                result,
+                "DomainDNSGetHostsResult.host",
+                [],
+                log_context=f"DNS hosts for {domain_name}"
+            )
+        )
 
         # Find if record exists
         found = False
@@ -218,28 +208,18 @@ class EnhancedDnsAPI:
         Raises:
             NamecheapException: If the API returns an error
         """
-        # Import utility functions
-        from ..utils import ensure_list
-
         # Get current hosts
         result = self.client.domains.dns.get_hosts(domain_name)
 
-        # Extract existing records safely
-        dns_hosts_result: Dict[str, object] = {}
-        if isinstance(result, dict):
-            hosts_result = result.get("DomainDNSGetHostsResult")
-            if isinstance(hosts_result, dict):
-                dns_hosts_result = hosts_result
-
-        host_entries: List[object] = []
-        if isinstance(dns_hosts_result, dict):
-            entries = dns_hosts_result.get("host")
-            if isinstance(entries, list):
-                host_entries = entries
-            elif entries is not None:
-                host_entries = [entries]
-
-        host_records = ensure_list(host_entries)
+        # Extract existing records using the consolidated extraction methods
+        host_records = self.client.ensure_list(
+            self.client.extract_value(
+                result,
+                "DomainDNSGetHostsResult.host",
+                [],
+                log_context=f"DNS hosts for {domain_name}"
+            )
+        )
 
         # Filter out the records to delete
         new_hosts: List[DnsHostRecord] = []
@@ -299,28 +279,18 @@ class EnhancedDnsAPI:
         Raises:
             NamecheapException: If the API returns an error
         """
-        # Import utility functions
-        from ..utils import ensure_list
-
         # Get current hosts to preserve other records
         result = self.client.domains.dns.get_hosts(domain_name)
 
-        # Extract existing records safely
-        dns_hosts_result: Dict[str, object] = {}
-        if isinstance(result, dict):
-            hosts_result = result.get("DomainDNSGetHostsResult")
-            if isinstance(hosts_result, dict):
-                dns_hosts_result = hosts_result
-
-        host_entries: List[object] = []
-        if isinstance(dns_hosts_result, dict):
-            entries = dns_hosts_result.get("host")
-            if isinstance(entries, list):
-                host_entries = entries
-            elif entries is not None:
-                host_entries = [entries]
-
-        host_records = ensure_list(host_entries)
+        # Extract existing records using the consolidated extraction methods
+        host_records = self.client.ensure_list(
+            self.client.extract_value(
+                result,
+                "DomainDNSGetHostsResult.host",
+                [],
+                log_context=f"DNS hosts for {domain_name}"
+            )
+        )
 
         # Keep only non-A records for @ and www
         new_hosts: List[DnsHostRecord] = []

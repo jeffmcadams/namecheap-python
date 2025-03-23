@@ -63,14 +63,11 @@ class EnhancedDomainsAPI:
         Raises:
             NamecheapException: If the API returns an error
         """
-        # Import utility functions
-        from ..utils import ensure_list
-
         # Get basic availability info
         domain_results = self.client.domains.check(domains)
 
         # Ensure domain_results is a list
-        domain_results_list = ensure_list(domain_results)
+        domain_results_list = self.client.ensure_list(domain_results)
 
         # Extract unique TLDs from available domains
         tlds = set()
@@ -90,8 +87,7 @@ class EnhancedDomainsAPI:
 
         # Build the final result
         domain_check_results: List[DomainCheckInfo] = []
-        result: DomainCheckResult = {"DomainCheckResult": domain_check_results}
-
+        
         for domain_info in domain_results_list:
             if not isinstance(domain_info, dict):
                 continue
@@ -118,6 +114,8 @@ class EnhancedDomainsAPI:
 
             domain_check_results.append(enhanced_info)
 
+        # Create the result with the updated domain_check_results
+        result: DomainCheckResult = {"DomainCheckResult": domain_check_results}
         return result
 
     def _get_tld_pricing(self, tlds: Set[str]) -> Dict[str, float]:
@@ -136,25 +134,194 @@ class EnhancedDomainsAPI:
                 # Remove the dot for the API call
                 tld_name = tld[1:] if tld.startswith(".") else tld
 
+                # Call the API with parameters according to the documentation
+                # Only supply the minimum required parameters as per the API documentation
                 price_response = self.client.users.get_pricing(
                     product_type="DOMAIN",
                     action_name="REGISTER",
-                    product_name=[tld_name],  # Wrap in a list as required by the API
-                    product_category="REGISTER",
+                    product_name=tld_name,
                 )
 
-                # Convert from nested type to Dict[str, object]
-                price_dict: Dict[str, object] = {}
-                if isinstance(price_response, dict):
-                    # Use a copy to avoid type issues
-                    for key, value in price_response.items():
-                        price_dict[key] = value
-                # Then extract price
-                price = self._extract_price_from_response(price_dict, tld_name)
-                if price > 0:
-                    pricing_info[tld] = price
+                # Log the pricing response basic info for debugging
+                self.client.log(
+                    "PRICING.DEBUG", f"Received pricing response for {tld_name}", "DEBUG",
+                    {"ResponseKeys": str(list(price_response.keys()))}
+                )
+                
+                # Get price directly from the parsed XML response using XML path
+                try:
+                    # Use the extract_value method to navigate the XML structure
+                    product_type = self.client.extract_value(
+                        price_response,
+                        "UserGetPricingResult.ProductType", 
+                        {}, 
+                        log_context=f"pricing response for {tld_name}"
+                    )
+                    
+                    if not isinstance(product_type, dict):
+                        self.client.log(
+                            "PRICING.WARNING", 
+                            f"Invalid ProductType data for {tld_name}", 
+                            "WARNING"
+                        )
+                        continue
+                    
+                    # First try to find a matching product in the REGISTER category
+                    found_price = False
+                    
+                    # Get all product categories
+                    categories = self.client.ensure_list(
+                        self.client.extract_value(product_type, "ProductCategory", [])
+                    )
+                    
+                    for category in categories:
+                        if not isinstance(category, dict):
+                            continue
+                            
+                        category_name = self.client.extract_value(category, "@Name", "")
+                        
+                        # Check if this is the REGISTER category
+                        if category_name.upper() == "REGISTER":
+                            # Get products in this category
+                            products = self.client.ensure_list(
+                                self.client.extract_value(category, "Product", [])
+                            )
+                            
+                            # Find the product matching our TLD
+                            for product in products:
+                                if not isinstance(product, dict):
+                                    continue
+                                    
+                                product_name = self.client.extract_value(product, "@Name", "")
+                                
+                                # Check if this product matches our TLD
+                                if product_name.lower() == tld_name.lower():
+                                    # Get prices for this product
+                                    prices = self.client.ensure_list(
+                                        self.client.extract_value(product, "Price", [])
+                                    )
+                                    
+                                    # Look for 1-year registration price
+                                    for price_obj in prices:
+                                        if not isinstance(price_obj, dict):
+                                            continue
+                                            
+                                        duration = self.client.extract_value(price_obj, "@Duration", "")
+                                        duration_type = self.client.extract_value(price_obj, "@DurationType", "")
+                                        
+                                        if duration == "1" and duration_type.upper() == "YEAR":
+                                            # Try each price field in order of priority
+                                            price_value = 0.0
+                                            
+                                            # First try YourPrice (personalized price)
+                                            price_value = self.client.extract_value(
+                                                price_obj, "@YourPrice", 0.0, float
+                                            )
+                                            
+                                            # If not found, try regular Price field
+                                            if price_value == 0.0:
+                                                price_value = self.client.extract_value(
+                                                    price_obj, "@Price", 0.0, float
+                                                )
+                                            
+                                            # If not found, try RegularPrice
+                                            if price_value == 0.0:
+                                                price_value = self.client.extract_value(
+                                                    price_obj, "@RegularPrice", 0.0, float
+                                                )
+                                            
+                                            # If we found a price, use it
+                                            if price_value > 0.0:
+                                                pricing_info[tld] = price_value
+                                                self.client.log(
+                                                    "PRICING.INFO", 
+                                                    f"Found price for {tld}: ${price_value}", 
+                                                    "INFO"
+                                                )
+                                                found_price = True
+                                                break
+                                    
+                                    # If we found a price, stop looking for more products
+                                    if found_price:
+                                        break
+                        
+                        # If we found a price, stop looking through categories
+                        if found_price:
+                            break
+                    
+                    # If we still didn't find a price, try any category with a matching product
+                    if not found_price:
+                        for category in categories:
+                            if not isinstance(category, dict):
+                                continue
+                                
+                            products = self.client.ensure_list(
+                                self.client.extract_value(category, "Product", [])
+                            )
+                            
+                            for product in products:
+                                if not isinstance(product, dict):
+                                    continue
+                                    
+                                product_name = self.client.extract_value(product, "@Name", "")
+                                
+                                if product_name.lower() == tld_name.lower():
+                                    prices = self.client.ensure_list(
+                                        self.client.extract_value(product, "Price", [])
+                                    )
+                                    
+                                    for price_obj in prices:
+                                        if not isinstance(price_obj, dict):
+                                            continue
+                                            
+                                        # Try each price field in order of priority
+                                        price_value = 0.0
+                                        
+                                        # First try YourPrice (personalized price)
+                                        price_value = self.client.extract_value(
+                                            price_obj, "@YourPrice", 0.0, float
+                                        )
+                                        
+                                        # If not found, try regular Price field
+                                        if price_value == 0.0:
+                                            price_value = self.client.extract_value(
+                                                price_obj, "@Price", 0.0, float
+                                            )
+                                        
+                                        # If not found, try RegularPrice
+                                        if price_value == 0.0:
+                                            price_value = self.client.extract_value(
+                                                price_obj, "@RegularPrice", 0.0, float
+                                            )
+                                        
+                                        # If we found a price, use it
+                                        if price_value > 0.0:
+                                            pricing_info[tld] = price_value
+                                            category_name = self.client.extract_value(category, "@Name", "UNKNOWN")
+                                            self.client.log(
+                                                "PRICING.INFO", 
+                                                f"Found fallback price for {tld} in category {category_name}: ${price_value}", 
+                                                "INFO"
+                                            )
+                                            found_price = True
+                                            break
+                                    
+                                    if found_price:
+                                        break
+                            
+                            if found_price:
+                                break
+                            
+                    if not found_price:
+                        self.client.log(
+                            "PRICING.WARNING", 
+                            f"No pricing data found for {tld_name}", 
+                            "WARNING"
+                        )
+                except Exception as e:
                     self.client.log(
-                        "PRICING.INFO", f"Found price for {tld}: ${price}", "DEBUG"
+                        "PRICING.ERROR", f"Error parsing price for {tld_name}", "ERROR",
+                        {"Error": str(e)}
                     )
             except Exception as e:
                 self.client.log(
@@ -166,121 +333,6 @@ class EnhancedDomainsAPI:
 
         return pricing_info
 
-    def _extract_price_from_response(
-        self, response: Dict[str, object], tld_name: str
-    ) -> float:
-        """
-        Extract 1-year registration price from pricing API response
-
-        Args:
-            response: API response dictionary
-            tld_name: TLD name without leading dot
-
-        Returns:
-            Price as float, or 0.0 if not found
-        """
-        # Import utility functions
-        from ..utils import ensure_list
-
-        # Get the pricing result safely
-        result = response.get("UserGetPricingResult")
-        if not result:
-            return 0.0
-
-        # Log the raw result for debugging
-        self.client.log(
-            "PRICING.DEBUG", f"Raw pricing data for {tld_name}: {result}", "DEBUG"
-        )
-
-        # Safely check for ProductType
-        if not isinstance(result, dict):
-            return 0.0
-
-        product_type = result.get("ProductType")
-        if not product_type or not isinstance(product_type, dict):
-            return 0.0
-
-        # Check for ProductCategory
-        product_category = product_type.get("ProductCategory")
-        if not product_category:
-            return 0.0
-
-        # Find register category
-        register_category = None
-
-        if isinstance(product_category, list):
-            # It's a list, search for the REGISTER category
-            for category in product_category:
-                if (
-                    isinstance(category, dict)
-                    and category.get("@Name", "").upper() == "REGISTER"
-                ):
-                    register_category = category
-                    break
-        elif (
-            isinstance(product_category, dict)
-            and product_category.get("@Name", "").upper() == "REGISTER"
-        ):
-            # It's already the REGISTER category
-            register_category = product_category
-
-        if not register_category:
-            return 0.0
-
-        # Get the Product safely
-        product = register_category.get("Product")
-        if not product:
-            return 0.0
-
-        # Find the product for our TLD
-        tld_product = None
-        product_list = ensure_list(product)
-
-        for prod in product_list:
-            if (
-                isinstance(prod, dict)
-                and prod.get("@Name", "").lower() == tld_name.lower()
-            ):
-                tld_product = prod
-                break
-
-        if not tld_product:
-            return 0.0
-
-        # Get prices safely
-        prices = tld_product.get("Price")
-        if not prices:
-            return 0.0
-
-        # Ensure prices is a list
-        price_list = ensure_list(prices)
-
-        for price_data in price_list:
-            if not isinstance(price_data, dict):
-                continue
-
-            # Check for 1-year duration
-            if (
-                price_data.get("@Duration") == "1"
-                and price_data.get("@DurationType", "").upper() == "YEAR"
-            ):
-                try:
-                    # Find price attribute regardless of capitalization
-                    price_value_attr = None
-                    for attr in price_data:
-                        if (
-                            isinstance(attr, str)
-                            and attr.lstrip("@").lower() == "price"
-                        ):
-                            price_value_attr = attr
-                            break
-
-                    if price_value_attr:
-                        return float(price_data[price_value_attr])
-                except (ValueError, TypeError):
-                    pass
-
-        return 0.0
 
     def _determine_domain_price(
         self,
@@ -303,27 +355,37 @@ class EnhancedDomainsAPI:
         tld = f".{extract.suffix}"
         regular_price = pricing_info.get(tld, 0.0)
         premium_price = 0.0
+        is_premium = domain_info.get("IsPremiumName", False)
 
         # Handle premium price if available
-        if "PremiumRegistrationPrice" in domain_info:
+        premium_price_str = domain_info.get("PremiumRegistrationPrice", "0.0")
+        if premium_price_str and premium_price_str != "0" and premium_price_str != "0.0":
             try:
-                premium_price = float(
-                    domain_info.get("PremiumRegistrationPrice", "0.0")
-                )
+                premium_price = float(premium_price_str)
             except (ValueError, TypeError):
                 premium_price = 0.0
 
         # Log the prices for debugging
         self.client.log(
             "PRICING.DEBUG",
-            f"Domain: {domain}, Regular: ${regular_price}, Premium: ${premium_price}, IsPremium: {domain_info.get('IsPremiumName', False)}",
+            f"Domain: {domain}, Regular: ${regular_price}, Premium: ${premium_price}, IsPremium: {is_premium}",
             "DEBUG",
         )
 
         # Determine final price
-        if domain_info.get("IsPremiumName", False) and premium_price > 0:
+        if is_premium and premium_price > 0:
+            self.client.log(
+                "PRICING.INFO",
+                f"Using premium price for {domain}: ${premium_price}",
+                "INFO",
+            )
             return premium_price
         elif regular_price > 0:
+            self.client.log(
+                "PRICING.INFO",
+                f"Using regular price for {domain}: ${regular_price}",
+                "INFO",
+            )
             return regular_price
         else:
             self.client.log(

@@ -10,7 +10,7 @@ Usage:
 import argparse
 
 from namecheap import NamecheapClient
-from utils.print_table import print_table
+from examples.utils.print_table import print_table
 
 # Parse command line arguments
 parser = argparse.ArgumentParser(
@@ -23,20 +23,22 @@ args = parser.parse_args()
 
 # Create the Namecheap client and check domain availability
 client = NamecheapClient(
-    api_user="default",
-    api_key="default",
-    username="default",
-    client_ip="default",
     debug=args.debug,
+    load_env=True  # Load values from .env file
 )
 result = client.enhanced.domains.check_with_pricing(args.domains)
+
+if args.debug:
+    import json
+    print("\nRaw API response structure:")
+    print(json.dumps(result, indent=2, default=str))
 
 # Prepare table data
 headers = ["Domain", "Available", "Premium", "Price"]
 rows = []
 
-# The result now contains a DomainCheckResult key with a list of domain results
-domains = result["DomainCheckResult"]
+# The result contains a DomainCheckResult key with a list of domain results
+domains = result.get("DomainCheckResult", [])
 
 for domain in domains:
     available = "Yes" if domain.get("Available") else "No"

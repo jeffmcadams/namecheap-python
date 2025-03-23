@@ -2,7 +2,10 @@
 Users API operations
 """
 
-from typing import Any, List, Optional, TypedDict
+from typing import Any, List, Optional, TypedDict, Union
+
+# Import ResponseDict type from base module for type annotations
+from ...base import ResponseDict
 
 
 # TypedDict definitions for user operations
@@ -87,8 +90,8 @@ class UsersAPI:
         product_category: Optional[str] = None,
         promotion_code: Optional[str] = None,
         action_name: Optional[str] = None,
-        product_name: Optional[List[str]] = None,
-    ) -> PricingResult:
+        product_name: Optional[Union[str, List[str]]] = None,
+    ) -> ResponseDict:
         """
         Get pricing information for Namecheap products
 
@@ -103,10 +106,10 @@ class UsersAPI:
             product_category: Product category (REGISTER, RENEW, REACTIVATE, TRANSFER, WHOISGUARD)
             promotion_code: Promotional (coupon) code for the product
             action_name: Name of the action (REGISTER, RENEW, REACTIVATE, TRANSFER, WHOISGUARD)
-            product_name: List of product names (e.g., [".com", ".net"] for domains)
+            product_name: List or single product name (e.g., ".com" or [".com", ".net"] for domains)
 
         Returns:
-            Dictionary with pricing information
+            Raw response dictionary directly from the API with complete XML structure preserved
 
         Raises:
             ValueError: If parameters are invalid
@@ -169,6 +172,7 @@ class UsersAPI:
                 params["ProductName"] = product_name
 
         # Make the API call with centralized error handling
+        # This returns the raw CommandResponse section from the API response
         response = self.client._make_request(
             "namecheap.users.getPricing",
             params,
@@ -176,68 +180,9 @@ class UsersAPI:
             {"product_type": product_type},
         )
 
-        # Parse the response into a properly typed result
-        product_list: List[ProductPrice] = []
-
-        # Extract products from the response
-        if "ProductType" in response and "ProductCategory" in response.get(
-            "ProductType", {}
-        ):
-            categories = response["ProductType"]["ProductCategory"]
-            if not isinstance(categories, list):
-                categories = [categories]
-
-            for category in categories:
-                if "Product" in category:
-                    products = category["Product"]
-                    if not isinstance(products, list):
-                        products = [products]
-
-                    for product in products:
-                        if isinstance(product, dict):
-                            product_price: ProductPrice = {
-                                "ProductName": product.get("Name", ""),
-                                "Currency": product.get("Currency", "USD"),
-                            }
-
-                            # Add prices if available
-                            if "Price" in product:
-                                product_price["Price"] = float(product["Price"])
-
-                            # Add specific price types if available
-                            if "RegisterPrice" in product:
-                                product_price["RegisterPrice"] = float(
-                                    product["RegisterPrice"]
-                                )
-                            if "RenewPrice" in product:
-                                product_price["RenewPrice"] = float(
-                                    product["RenewPrice"]
-                                )
-                            if "TransferPrice" in product:
-                                product_price["TransferPrice"] = float(
-                                    product["TransferPrice"]
-                                )
-                            if "RestorePrice" in product:
-                                product_price["RestorePrice"] = float(
-                                    product["RestorePrice"]
-                                )
-                            if "ReactivatePrice" in product:
-                                product_price["ReactivatePrice"] = float(
-                                    product["ReactivatePrice"]
-                                )
-
-                            product_list.append(product_price)
-
-        # Create the typed result
-        result: PricingResult = {
-            "products": product_list,
-            "currency": response.get("Currency", "USD"),
-            "product_type": product_type,
-            "category": product_category,
-            "promotion_code": promotion_code,
-        }
-
-        return result
+        # Return the raw response to allow enhanced methods to parse it according to their needs
+        # This preserves the original XML structure mapping
+        return response
 
     def get_balances(self) -> AccountBalance:
         """

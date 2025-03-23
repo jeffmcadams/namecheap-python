@@ -76,8 +76,7 @@ def list_records(
 
         # Get records now returns a clean list of normalized records
         records = client.domains.dns.get_hosts(domain)
-        return records
-
+        
         if client.debug:
             print(f"\nFound {len(records)} DNS records")
 
@@ -95,11 +94,11 @@ def list_records(
 
         for record in records:
             # Use the original API field names
-            name = record["Name"]
-            record_type = record["Type"]
-            ttl = record["TTL"]
-            mx_pref = record["MXPref"] if record_type == "MX" else ""
-            address = record["Address"]
+            name = record.get("Name", "")
+            record_type = record.get("Type", "")
+            ttl = record.get("TTL", "")
+            mx_pref = record.get("MXPref", "") if record_type == "MX" else ""
+            address = record.get("Address", "")
 
             rows.append(
                 [str(name), str(record_type), str(ttl), str(mx_pref), str(address)]
@@ -108,6 +107,8 @@ def list_records(
         # Print table
         print(f"\nDNS Records for {domain}:")
         print_table(headers, rows)
+        
+        return records
 
     except NamecheapException as e:
         print(e)
@@ -154,12 +155,12 @@ def add_record(
         # Update the records
         result = client.domains.dns.set_hosts(domain, updated_records)
 
-        if result["success"]:
+        # Check for success based on IsSuccess field which is normalized to "IsSuccess"
+        if result.get("IsSuccess", False):
             print(f"\nSuccess! Record added to {domain}")
         else:
-            print(
-                f"\nWarning: Operation completed but with warnings: {result['warnings']}"
-            )
+            warnings = result.get("Warnings", "")
+            print(f"\nWarning: Operation completed but with warnings: {warnings}")
 
     except NamecheapException as e:
         print(e)
@@ -219,13 +220,15 @@ def delete_record(
         # Update records (removing the ones to delete)
         result = client.domains.dns.set_hosts(domain, records_to_keep)
 
-        if result["success"]:
+        # Check for success based on IsSuccess field 
+        if result.get("IsSuccess", False):
             print(
                 f"\nSuccess! {len(records_to_delete)} record(s) deleted from {domain}"
             )
         else:
+            warnings = result.get("Warnings", "")
             print(
-                f"\nWarning: Operation completed but with warnings: {result['warnings']}"
+                f"\nWarning: Operation completed but with warnings: {warnings}"
             )
 
     except NamecheapException as e:
@@ -385,13 +388,10 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    # Initialize client with debug mode using the args object
+    # Initialize client with debug mode and load credentials from environment variables
     client = NamecheapClient(
-        api_user="default",
-        api_key="default",
-        username="default",
-        client_ip="default",
         debug=args.debug,
+        load_env=True
     )
 
     # Execute the appropriate command

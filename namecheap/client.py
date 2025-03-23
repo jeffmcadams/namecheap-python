@@ -4,6 +4,8 @@ Namecheap API Python client
 A Python wrapper for interacting with the Namecheap API.
 """
 
+from typing import Optional
+
 from .api.domains import DomainsAPI
 from .api.ssl import SslAPI
 from .api.users import UsersAPI
@@ -42,12 +44,13 @@ class NamecheapClient(BaseClient):
 
     def __init__(
         self,
-        api_user: str,
-        api_key: str,
-        username: str,
-        client_ip: str,
-        sandbox: bool = True,
+        api_user: Optional[str] = None,
+        api_key: Optional[str] = None,
+        username: Optional[str] = None,
+        client_ip: Optional[str] = None,
+        sandbox: Optional[bool] = None,
         debug: bool = False,
+        load_env: bool = True,
     ) -> None:
         """
         Initialize the Namecheap API client
@@ -59,8 +62,9 @@ class NamecheapClient(BaseClient):
             client_ip: Client IP address
             sandbox: Whether to use the sandbox environment
             debug: Whether to enable debug mode
+            load_env: Whether to load credentials from environment variables
         """
-        super().__init__(api_user, api_key, username, client_ip, sandbox, debug)
+        super().__init__(api_user, api_key, username, client_ip, sandbox, debug, load_env)
 
         # Initialize API namespaces
         self.domains = DomainsAPI(self)
