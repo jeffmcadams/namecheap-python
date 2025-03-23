@@ -1,7 +1,8 @@
 """
 Domain transfer operations for domains API
 """
-from typing import Dict, Optional
+
+from typing import Optional
 
 from ...base import BaseClient, ResponseDict
 
@@ -9,16 +10,16 @@ from ...base import BaseClient, ResponseDict
 COMMON_TRANSFER_ERRORS = {
     "2019166": {
         "explanation": "Transfer ID not found",
-        "fix": "Verify the transfer ID is correct and exists in your account"
+        "fix": "Verify the transfer ID is correct and exists in your account",
     },
     "2016166": {
         "explanation": "Domain is not associated with your account",
-        "fix": "Check that the domain is registered with your Namecheap account"
+        "fix": "Check that the domain is registered with your Namecheap account",
     },
     "UNKNOWN_ERROR": {
         "explanation": "Transfer operation failed",
-        "fix": "Verify all parameters are correct and try again"
-    }
+        "fix": "Verify all parameters are correct and try again",
+    },
 }
 
 
@@ -40,7 +41,7 @@ class TransferAPI:
         years: int = 1,
         epp_code: Optional[str] = None,
         promotion_code: Optional[str] = None,
-        **kwargs: str
+        **kwargs: str,
     ) -> ResponseDict:
         """
         Transfers a domain to Namecheap
@@ -71,33 +72,30 @@ class TransferAPI:
             **COMMON_TRANSFER_ERRORS,
             "2011170": {
                 "explanation": "Validation error from promotion code",
-                "fix": "Ensure the promotion code is valid and applicable for domain transfers"
+                "fix": "Ensure the promotion code is valid and applicable for domain transfers",
             },
             "2011280": {
                 "explanation": "TLD is not valid",
-                "fix": "Check that the domain's top-level domain (TLD) is supported for transfers"
+                "fix": "Check that the domain's top-level domain (TLD) is supported for transfers",
             },
             "2030280": {
                 "explanation": "TLD is not supported for API",
-                "fix": "Verify that the domain's TLD is among those allowed for API transfers"
+                "fix": "Verify that the domain's TLD is among those allowed for API transfers",
             },
             "2528166": {
                 "explanation": "Order creation failed",
-                "fix": "Double-check all transfer parameters and try the request again"
+                "fix": "Double-check all transfer parameters and try the request again",
             },
             "UNKNOWN_ERROR": {
                 "explanation": "Transfer creation failed",
-                "fix": "Verify that '{domain_name}' exists and all parameters are correct"
-            }
+                "fix": "Verify that '{domain_name}' exists and all parameters are correct",
+            },
         }
 
         # Removed unused extract variable
         # extract = tldextract.extract(domain_name)
 
-        params = {
-            "DomainName": domain_name,
-            "Years": years
-        }
+        params = {"DomainName": domain_name, "Years": years}
 
         if epp_code:
             params["EPPCode"] = epp_code
@@ -113,7 +111,7 @@ class TransferAPI:
             "namecheap.domains.transfer.create",
             params,
             error_codes,
-            {"domain_name": domain_name}
+            {"domain_name": domain_name},
         )
 
     def get_status(self, transfer_id: int) -> ResponseDict:
@@ -140,12 +138,12 @@ class TransferAPI:
             **COMMON_TRANSFER_ERRORS,
             "4019329": {
                 "explanation": "TransferStatus not available",
-                "fix": "Ensure the transfer ID is correct and in a valid state for status retrieval"
+                "fix": "Ensure the transfer ID is correct and in a valid state for status retrieval",
             },
             "UNKNOWN_ERROR": {
                 "explanation": "Failed to get transfer status",
-                "fix": "Verify that transfer ID '{transfer_id}' exists and is valid"
-            }
+                "fix": "Verify that transfer ID '{transfer_id}' exists and is valid",
+            },
         }
 
         params = {"TransferID": transfer_id}
@@ -155,7 +153,7 @@ class TransferAPI:
             "namecheap.domains.transfer.getStatus",
             params,
             error_codes,
-            {"transfer_id": transfer_id}
+            {"transfer_id": transfer_id},
         )
 
     def update_status(self, transfer_id: int, resubmit: bool = False) -> ResponseDict:
@@ -183,17 +181,17 @@ class TransferAPI:
             **COMMON_TRANSFER_ERRORS,
             "2019167": {
                 "explanation": "Invalid transfer status update",
-                "fix": "The transfer may be in a state that cannot be updated or resubmitted"
+                "fix": "The transfer may be in a state that cannot be updated or resubmitted",
             },
             "UNKNOWN_ERROR": {
                 "explanation": "Failed to update transfer status",
-                "fix": "Verify that transfer ID '{transfer_id}' exists and is valid"
-            }
+                "fix": "Verify that transfer ID '{transfer_id}' exists and is valid",
+            },
         }
 
         params = {
             "TransferID": transfer_id,
-            "Resubmit": "true" if resubmit else "false"
+            "Resubmit": "true" if resubmit else "false",
         }
 
         # Make the API call with centralized error handling
@@ -201,7 +199,7 @@ class TransferAPI:
             "namecheap.domains.transfer.updateStatus",
             params,
             error_codes,
-            {"transfer_id": transfer_id}
+            {"transfer_id": transfer_id},
         )
 
     def get_list(
@@ -209,7 +207,7 @@ class TransferAPI:
         page: int = 1,
         page_size: int = 20,
         sort_by: str = "TRANSFERDATE",
-        list_type: str = "ALL"
+        list_type: str = "ALL",
     ) -> ResponseDict:
         """
         Gets the list of domain transfers
@@ -238,16 +236,16 @@ class TransferAPI:
             **COMMON_TRANSFER_ERRORS,
             "2011166": {
                 "explanation": "Invalid request parameters",
-                "fix": "Check the format of all parameters in your request"
+                "fix": "Check the format of all parameters in your request",
             },
             "2012167": {
                 "explanation": "Maximum page size exceeded",
-                "fix": "Reduce the page size to a maximum of 100"
+                "fix": "Reduce the page size to a maximum of 100",
             },
             "UNKNOWN_ERROR": {
                 "explanation": "Failed to get transfer list",
-                "fix": "Verify that all parameters are valid and try again"
-            }
+                "fix": "Verify that all parameters are valid and try again",
+            },
         }
 
         if page_size > 100:
@@ -275,8 +273,5 @@ class TransferAPI:
 
         # Make the API call with centralized error handling
         return self.client._make_request(
-            "namecheap.domains.transfer.getList",
-            params,
-            error_codes,
-            {}
+            "namecheap.domains.transfer.getList", params, error_codes, {}
         )

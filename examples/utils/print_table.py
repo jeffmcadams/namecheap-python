@@ -2,8 +2,10 @@
 Utility functions for Namecheap examples.
 """
 
+from typing import List, Union
 
-def print_table(headers, rows):
+
+def print_table(headers: List[str], rows: List[List[Union[str, int, float]]]) -> None:
     """
     Print data in a nicely formatted table.
 

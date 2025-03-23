@@ -25,7 +25,7 @@ class NamecheapException(Exception):
         client: Any,
         explanation: Optional[str] = None,
         fix: Optional[str] = None,
-        raw_response: Optional[str] = None
+        raw_response: Optional[str] = None,
     ):
         self.code = code
         self.message = message
@@ -42,8 +42,8 @@ class NamecheapException(Exception):
                 "code": self.code,
                 "explanation": self.explanation,
                 "fix": self.fix,
-                "has_raw_response": bool(self.raw_response)
-            }
+                "has_raw_response": bool(self.raw_response),
+            },
         )
 
         # Create the string representation
@@ -64,7 +64,9 @@ class NamecheapException(Exception):
         if self.client.debug and self.raw_response:
             parts.append("\nRaw API response:")
             parts.append(
-                self.raw_response[:1000] + ("..." if len(self.raw_response) > 1000 else ""))
+                self.raw_response[:1000]
+                + ("..." if len(self.raw_response) > 1000 else "")
+            )
 
         return "\n".join(parts)
 
@@ -84,7 +86,7 @@ class NamecheapException(Exception):
                         "4. Add this IP to the Whitelisted IPs list\n"
                         "5. Update your .env file with this IP"
                     )
-                }
+                },
             )
 
 

@@ -1,9 +1,8 @@
 """
 Enhanced DNS operations
 """
-from typing import Dict, List, Optional, TYPE_CHECKING, TypedDict, Union, cast
 
-from ..base import ResponseDict
+from typing import TYPE_CHECKING, Dict, List, Optional, TypedDict
 
 # Import needed for type hints
 if TYPE_CHECKING:
@@ -12,6 +11,7 @@ if TYPE_CHECKING:
 
 class DnsHostRecord(TypedDict, total=False):
     """Type for a DNS host record"""
+
     Name: str
     Type: str
     Address: str
@@ -21,6 +21,7 @@ class DnsHostRecord(TypedDict, total=False):
 
 class DnsDomainResult(TypedDict):
     """Type for DNS domain result"""
+
     Domain: str
     IsUsingOurDNS: bool
     Hosts: List[DnsHostRecord]
@@ -29,6 +30,7 @@ class DnsDomainResult(TypedDict):
 
 class UpdateRecordResult(TypedDict):
     """Result type for update_record operation"""
+
     domain: str
     host: str
     type: str
@@ -39,6 +41,7 @@ class UpdateRecordResult(TypedDict):
 
 class DeleteRecordResult(TypedDict):
     """Result type for delete_record operation"""
+
     domain: str
     host: str
     type: str
@@ -48,6 +51,7 @@ class DeleteRecordResult(TypedDict):
 
 class SetARecordsResult(TypedDict):
     """Result type for set_a_records operation"""
+
     domain: str
     ip_address: str
     success: bool
@@ -83,7 +87,7 @@ class EnhancedDnsAPI:
         record_type: str,
         value: str,
         ttl: int = 1800,
-        priority: Optional[int] = None
+        priority: Optional[int] = None,
     ) -> UpdateRecordResult:
         """
         Add or update a single DNS record while preserving all other records
@@ -104,18 +108,18 @@ class EnhancedDnsAPI:
             NamecheapException: If the API returns an error
         """
         # Import utility functions
-        from ..utils import safe_get, ensure_list
-        
+        from ..utils import ensure_list
+
         # Get current hosts
         result = self.client.domains.dns.get_hosts(domain_name)
-        
+
         # Extract existing records safely
         dns_hosts_result: Dict[str, object] = {}
         if isinstance(result, dict):
             hosts_result = result.get("DomainDNSGetHostsResult")
             if isinstance(hosts_result, dict):
                 dns_hosts_result = hosts_result
-        
+
         host_entries: List[object] = []
         if isinstance(dns_hosts_result, dict):
             entries = dns_hosts_result.get("host")
@@ -123,9 +127,9 @@ class EnhancedDnsAPI:
                 host_entries = entries
             elif entries is not None:
                 host_entries = [entries]
-            
+
         host_records = ensure_list(host_entries)
-        
+
         # Find if record exists
         found = False
         new_hosts: List[DnsHostRecord] = []
@@ -143,7 +147,7 @@ class EnhancedDnsAPI:
                     "Name": host,
                     "Type": record_type,
                     "Address": value,
-                    "TTL": str(ttl)
+                    "TTL": str(ttl),
                 }
 
                 if record_type == "MX" and priority is not None:
@@ -155,13 +159,15 @@ class EnhancedDnsAPI:
                 found = True
             else:
                 # Keep existing record
-                new_hosts.append({
-                    "Name": record_name,
-                    "Type": record_type_existing,
-                    "Address": host_record.get("Address", ""),
-                    "MXPref": host_record.get("MXPref", "10"),
-                    "TTL": host_record.get("TTL", "1800")
-                })
+                new_hosts.append(
+                    {
+                        "Name": record_name,
+                        "Type": record_type_existing,
+                        "Address": host_record.get("Address", ""),
+                        "MXPref": host_record.get("MXPref", "10"),
+                        "TTL": host_record.get("TTL", "1800"),
+                    }
+                )
 
         # Add new record if not found
         if not found:
@@ -169,17 +175,18 @@ class EnhancedDnsAPI:
                 "Name": host,
                 "Type": record_type,
                 "Address": value,
-                "TTL": str(ttl)
+                "TTL": str(ttl),
             }
 
             if record_type == "MX":
-                new_rec["MXPref"] = str(
-                    priority if priority is not None else 10)
+                new_rec["MXPref"] = str(priority if priority is not None else 10)
 
             new_hosts.append(new_rec)
 
         # Convert host records to dict and set the updated host records
-        host_records_dict = [_convert_host_record_to_dict(record) for record in new_hosts]
+        host_records_dict = [
+            _convert_host_record_to_dict(record) for record in new_hosts
+        ]
         response = self.client.domains.dns.set_hosts(domain_name, host_records_dict)
 
         # Create properly typed result
@@ -189,16 +196,12 @@ class EnhancedDnsAPI:
             "type": record_type,
             "value": value,
             "ttl": ttl,
-            "success": bool(response.get("IsSuccess", False))
+            "success": bool(response.get("IsSuccess", False)),
         }
         return update_result
 
     def delete_record(
-        self,
-        domain_name: str,
-        host: str,
-        record_type: str,
-        value: Optional[str] = None
+        self, domain_name: str, host: str, record_type: str, value: Optional[str] = None
     ) -> DeleteRecordResult:
         """
         Delete a DNS record
@@ -217,7 +220,7 @@ class EnhancedDnsAPI:
         """
         # Import utility functions
         from ..utils import ensure_list
-        
+
         # Get current hosts
         result = self.client.domains.dns.get_hosts(domain_name)
 
@@ -227,7 +230,7 @@ class EnhancedDnsAPI:
             hosts_result = result.get("DomainDNSGetHostsResult")
             if isinstance(hosts_result, dict):
                 dns_hosts_result = hosts_result
-        
+
         host_entries: List[object] = []
         if isinstance(dns_hosts_result, dict):
             entries = dns_hosts_result.get("host")
@@ -235,9 +238,9 @@ class EnhancedDnsAPI:
                 host_entries = entries
             elif entries is not None:
                 host_entries = [entries]
-            
+
         host_records = ensure_list(host_entries)
-        
+
         # Filter out the records to delete
         new_hosts: List[DnsHostRecord] = []
         deleted_count = 0
@@ -256,16 +259,20 @@ class EnhancedDnsAPI:
                     continue
 
             # Keep this record
-            new_hosts.append({
-                "Name": record_name,
-                "Type": record_type_existing,
-                "Address": host_record.get("Address", ""),
-                "MXPref": host_record.get("MXPref", "10"),
-                "TTL": host_record.get("TTL", "1800")
-            })
+            new_hosts.append(
+                {
+                    "Name": record_name,
+                    "Type": record_type_existing,
+                    "Address": host_record.get("Address", ""),
+                    "MXPref": host_record.get("MXPref", "10"),
+                    "TTL": host_record.get("TTL", "1800"),
+                }
+            )
 
         # Convert host records to dict and set the updated host records
-        host_records_dict = [_convert_host_record_to_dict(record) for record in new_hosts]
+        host_records_dict = [
+            _convert_host_record_to_dict(record) for record in new_hosts
+        ]
         response = self.client.domains.dns.set_hosts(domain_name, host_records_dict)
 
         # Create properly typed result
@@ -274,7 +281,7 @@ class EnhancedDnsAPI:
             "host": host,
             "type": record_type,
             "success": bool(response.get("IsSuccess", False)),
-            "deleted_count": deleted_count
+            "deleted_count": deleted_count,
         }
         return delete_result
 
@@ -294,7 +301,7 @@ class EnhancedDnsAPI:
         """
         # Import utility functions
         from ..utils import ensure_list
-        
+
         # Get current hosts to preserve other records
         result = self.client.domains.dns.get_hosts(domain_name)
 
@@ -304,7 +311,7 @@ class EnhancedDnsAPI:
             hosts_result = result.get("DomainDNSGetHostsResult")
             if isinstance(hosts_result, dict):
                 dns_hosts_result = hosts_result
-        
+
         host_entries: List[object] = []
         if isinstance(dns_hosts_result, dict):
             entries = dns_hosts_result.get("host")
@@ -312,7 +319,7 @@ class EnhancedDnsAPI:
                 host_entries = entries
             elif entries is not None:
                 host_entries = [entries]
-            
+
         host_records = ensure_list(host_entries)
 
         # Keep only non-A records for @ and www
@@ -330,37 +337,35 @@ class EnhancedDnsAPI:
                 continue
 
             # Add record with correct typing
-            new_hosts.append({
-                "Name": record_name,
-                "Type": record_type,
-                "Address": host_record.get("Address", ""),
-                "MXPref": host_record.get("MXPref", "10"),
-                "TTL": host_record.get("TTL", "1800")
-            })
+            new_hosts.append(
+                {
+                    "Name": record_name,
+                    "Type": record_type,
+                    "Address": host_record.get("Address", ""),
+                    "MXPref": host_record.get("MXPref", "10"),
+                    "TTL": host_record.get("TTL", "1800"),
+                }
+            )
 
         # Add new A records
-        new_hosts.append({
-            "Name": "@",
-            "Type": "A",
-            "Address": ip_address,
-            "TTL": "1800"
-        })
+        new_hosts.append(
+            {"Name": "@", "Type": "A", "Address": ip_address, "TTL": "1800"}
+        )
 
-        new_hosts.append({
-            "Name": "www",
-            "Type": "A",
-            "Address": ip_address,
-            "TTL": "1800"
-        })
+        new_hosts.append(
+            {"Name": "www", "Type": "A", "Address": ip_address, "TTL": "1800"}
+        )
 
         # Convert host records to dict and set the updated host records
-        host_records_dict = [_convert_host_record_to_dict(record) for record in new_hosts]
+        host_records_dict = [
+            _convert_host_record_to_dict(record) for record in new_hosts
+        ]
         response = self.client.domains.dns.set_hosts(domain_name, host_records_dict)
 
         # Create properly typed result
         a_records_result: SetARecordsResult = {
             "domain": domain_name,
             "ip_address": ip_address,
-            "success": bool(response.get("IsSuccess", False))
+            "success": bool(response.get("IsSuccess", False)),
         }
         return a_records_result

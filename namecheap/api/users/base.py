@@ -1,12 +1,14 @@
 """
 Users API operations
 """
-from typing import Any, Dict, List, Optional, TypedDict, Union
+
+from typing import Any, List, Optional, TypedDict
 
 
 # TypedDict definitions for user operations
 class ProductPrice(TypedDict, total=False):
     """Product pricing information"""
+
     ProductName: str
     Price: float
     RegisterPrice: float
@@ -19,6 +21,7 @@ class ProductPrice(TypedDict, total=False):
 
 class PricingResult(TypedDict):
     """Result of get_pricing operation"""
+
     products: List[ProductPrice]
     currency: str
     product_type: str
@@ -28,6 +31,7 @@ class PricingResult(TypedDict):
 
 class AccountBalance(TypedDict):
     """Account balance information"""
+
     available_balance: float
     earned_amount: float
     pending_amount: float
@@ -39,6 +43,7 @@ class AccountBalance(TypedDict):
 
 class PasswordChangeResult(TypedDict):
     """Result of password change operation"""
+
     success: bool
     message: str
 
@@ -47,20 +52,20 @@ class PasswordChangeResult(TypedDict):
 COMMON_USER_ERRORS = {
     "2019103": {
         "explanation": "Username not found",
-        "fix": "Verify the username exists and is spelled correctly"
+        "fix": "Verify the username exists and is spelled correctly",
     },
     "2017166": {
         "explanation": "User is disabled or locked",
-        "fix": "Contact Namecheap support to resolve account access issues"
+        "fix": "Contact Namecheap support to resolve account access issues",
     },
     "2010335": {
         "explanation": "Invalid password",
-        "fix": "Check that the password is correct"
+        "fix": "Check that the password is correct",
     },
     "UNKNOWN_ERROR": {
         "explanation": "User operation failed",
-        "fix": "Verify all parameters are correct and try again"
-    }
+        "fix": "Verify all parameters are correct and try again",
+    },
 }
 
 
@@ -82,7 +87,7 @@ class UsersAPI:
         product_category: Optional[str] = None,
         promotion_code: Optional[str] = None,
         action_name: Optional[str] = None,
-        product_name: Optional[List[str]] = None
+        product_name: Optional[List[str]] = None,
     ) -> PricingResult:
         """
         Get pricing information for Namecheap products
@@ -112,36 +117,44 @@ class UsersAPI:
             **COMMON_USER_ERRORS,
             "2011170": {
                 "explanation": "PromotionCode is invalid",
-                "fix": "Verify the promotion code is valid and not expired"
+                "fix": "Verify the promotion code is valid and not expired",
             },
             "2011298": {
                 "explanation": "ProductType is invalid",
-                "fix": "Use one of the supported product types: DOMAIN, SSLCERTIFICATE, WHOISGUARD"
+                "fix": "Use one of the supported product types: DOMAIN, SSLCERTIFICATE, WHOISGUARD",
             },
             "UNKNOWN_ERROR": {
                 "explanation": "Failed to get pricing information",
-                "fix": "Verify that all parameters are valid and try again"
-            }
+                "fix": "Verify that all parameters are valid and try again",
+            },
         }
 
         valid_product_types = ["DOMAIN", "SSLCERTIFICATE", "WHOISGUARD"]
         if product_type not in valid_product_types:
-            raise ValueError(
-                f"product_type must be one of {valid_product_types}")
+            raise ValueError(f"product_type must be one of {valid_product_types}")
 
         params = {"ProductType": product_type}
 
         if product_category:
-            valid_categories = ["REGISTER", "RENEW",
-                                "REACTIVATE", "TRANSFER", "WHOISGUARD"]
+            valid_categories = [
+                "REGISTER",
+                "RENEW",
+                "REACTIVATE",
+                "TRANSFER",
+                "WHOISGUARD",
+            ]
             if product_category not in valid_categories:
-                raise ValueError(
-                    f"product_category must be one of {valid_categories}")
+                raise ValueError(f"product_category must be one of {valid_categories}")
             params["ProductCategory"] = product_category
 
         if action_name:
-            valid_actions = ["REGISTER", "RENEW",
-                             "REACTIVATE", "TRANSFER", "WHOISGUARD"]
+            valid_actions = [
+                "REGISTER",
+                "RENEW",
+                "REACTIVATE",
+                "TRANSFER",
+                "WHOISGUARD",
+            ]
             if action_name not in valid_actions:
                 raise ValueError(f"action_name must be one of {valid_actions}")
             params["ActionName"] = action_name
@@ -160,14 +173,16 @@ class UsersAPI:
             "namecheap.users.getPricing",
             params,
             error_codes,
-            {"product_type": product_type}
+            {"product_type": product_type},
         )
 
         # Parse the response into a properly typed result
         product_list: List[ProductPrice] = []
 
         # Extract products from the response
-        if "ProductType" in response and "ProductCategory" in response.get("ProductType", {}):
+        if "ProductType" in response and "ProductCategory" in response.get(
+            "ProductType", {}
+        ):
             categories = response["ProductType"]["ProductCategory"]
             if not isinstance(categories, list):
                 categories = [categories]
@@ -182,30 +197,34 @@ class UsersAPI:
                         if isinstance(product, dict):
                             product_price: ProductPrice = {
                                 "ProductName": product.get("Name", ""),
-                                "Currency": product.get("Currency", "USD")
+                                "Currency": product.get("Currency", "USD"),
                             }
 
                             # Add prices if available
                             if "Price" in product:
-                                product_price["Price"] = float(
-                                    product["Price"])
+                                product_price["Price"] = float(product["Price"])
 
                             # Add specific price types if available
                             if "RegisterPrice" in product:
                                 product_price["RegisterPrice"] = float(
-                                    product["RegisterPrice"])
+                                    product["RegisterPrice"]
+                                )
                             if "RenewPrice" in product:
                                 product_price["RenewPrice"] = float(
-                                    product["RenewPrice"])
+                                    product["RenewPrice"]
+                                )
                             if "TransferPrice" in product:
                                 product_price["TransferPrice"] = float(
-                                    product["TransferPrice"])
+                                    product["TransferPrice"]
+                                )
                             if "RestorePrice" in product:
                                 product_price["RestorePrice"] = float(
-                                    product["RestorePrice"])
+                                    product["RestorePrice"]
+                                )
                             if "ReactivatePrice" in product:
                                 product_price["ReactivatePrice"] = float(
-                                    product["ReactivatePrice"])
+                                    product["ReactivatePrice"]
+                                )
 
                             product_list.append(product_price)
 
@@ -215,7 +234,7 @@ class UsersAPI:
             "currency": response.get("Currency", "USD"),
             "product_type": product_type,
             "category": product_category,
-            "promotion_code": promotion_code
+            "promotion_code": promotion_code,
         }
 
         return result
@@ -240,20 +259,17 @@ class UsersAPI:
             **COMMON_USER_ERRORS,
             "4022312": {
                 "explanation": "Balance information is not available",
-                "fix": "Try again later or contact Namecheap support"
+                "fix": "Try again later or contact Namecheap support",
             },
             "UNKNOWN_ERROR": {
                 "explanation": "Failed to get account balances",
-                "fix": "Verify that your account is in good standing and try again"
-            }
+                "fix": "Verify that your account is in good standing and try again",
+            },
         }
 
         # Make the API call with centralized error handling
         response = self.client._make_request(
-            "namecheap.users.getBalances",
-            {},
-            error_codes,
-            {}
+            "namecheap.users.getBalances", {}, error_codes, {}
         )
 
         # Parse and create a typed result
@@ -264,12 +280,14 @@ class UsersAPI:
             "account_balance": float(response.get("AccountBalance", 0.0)),
             "created_date": response.get("CreatedDate", ""),
             "last_updated": response.get("LastUpdated", ""),
-            "currency": response.get("Currency", "USD")
+            "currency": response.get("Currency", "USD"),
         }
 
         return result
 
-    def change_password(self, old_password: str, new_password: str) -> PasswordChangeResult:
+    def change_password(
+        self, old_password: str, new_password: str
+    ) -> PasswordChangeResult:
         """
         Change account password
 
@@ -295,39 +313,33 @@ class UsersAPI:
             **COMMON_USER_ERRORS,
             "2010302": {
                 "explanation": "OldPassword is missing",
-                "fix": "Provide the current password"
+                "fix": "Provide the current password",
             },
             "4022335": {
                 "explanation": "Unable to change password",
-                "fix": "Ensure the old password is correct and the new password meets requirements"
+                "fix": "Ensure the old password is correct and the new password meets requirements",
             },
             "5050900": {
                 "explanation": "Unhandled exception occurred",
-                "fix": "Try again later or contact Namecheap support"
+                "fix": "Try again later or contact Namecheap support",
             },
             "UNKNOWN_ERROR": {
                 "explanation": "Failed to change password",
-                "fix": "Verify both passwords are correct and try again"
-            }
+                "fix": "Verify both passwords are correct and try again",
+            },
         }
 
-        params = {
-            "OldPassword": old_password,
-            "NewPassword": new_password
-        }
+        params = {"OldPassword": old_password, "NewPassword": new_password}
 
         # Make the API call with centralized error handling
         response = self.client._make_request(
-            "namecheap.users.changePassword",
-            params,
-            error_codes,
-            {}
+            "namecheap.users.changePassword", params, error_codes, {}
         )
 
         # Create a properly typed result
         result: PasswordChangeResult = {
             "success": bool(response.get("IsSuccess", False)),
-            "message": response.get("Message", "Password changed successfully")
+            "message": response.get("Message", "Password changed successfully"),
         }
 
         return result

@@ -4,6 +4,7 @@ Unit tests for the Namecheap API client
 """
 
 import unittest
+from typing import Any, Dict, List, Optional
 from unittest.mock import Mock, patch
 
 from namecheap import NamecheapClient, NamecheapException
@@ -12,7 +13,7 @@ from namecheap import NamecheapClient, NamecheapException
 class TestNamecheapClient(unittest.TestCase):
     """Test cases for the Namecheap API client"""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up the test environment"""
         self.client = NamecheapClient(
             api_user="test_user",
@@ -22,7 +23,7 @@ class TestNamecheapClient(unittest.TestCase):
             sandbox=True,
         )
 
-    def test_initialization(self):
+    def test_initialization(self) -> None:
         """Test client initialization"""
         self.assertEqual(self.client.api_user, "test_user")
         self.assertEqual(self.client.api_key, "test_key")
@@ -32,7 +33,7 @@ class TestNamecheapClient(unittest.TestCase):
             self.client.base_url, "https://api.sandbox.namecheap.com/xml.response"
         )
 
-    def test_get_base_params(self):
+    def test_get_base_params(self) -> None:
         """Test _get_base_params method"""
         base_params = self.client._get_base_params()
         expected_params = {
@@ -44,7 +45,7 @@ class TestNamecheapClient(unittest.TestCase):
         self.assertEqual(base_params, expected_params)
 
     @patch("requests.get")
-    def test_make_request(self, mock_get):
+    def test_make_request(self, mock_get: Mock) -> None:
         """Test _make_request method"""
         # Mock the response
         mock_response = Mock()
@@ -80,7 +81,7 @@ class TestNamecheapClient(unittest.TestCase):
         self.assertEqual(kwargs["params"]["DomainList"], "example.com")
 
     @patch("requests.get")
-    def test_domains_check(self, mock_get):
+    def test_domains_check(self, mock_get: Mock) -> None:
         """Test domains_check method"""
         # Mock the response
         mock_response = Mock()
@@ -119,7 +120,7 @@ class TestNamecheapClient(unittest.TestCase):
                 self.assertTrue(domain["Available"])
 
     @patch("requests.get")
-    def test_dns_record_operations(self, mock_get):
+    def test_dns_record_operations(self, mock_get: Mock) -> None:
         """Test DNS record operations"""
         # Mock the get hosts response
         mock_response = Mock()
@@ -157,7 +158,7 @@ class TestNamecheapClient(unittest.TestCase):
         self.assertEqual(host_records[1]["Type"], "CNAME")
 
     @patch("requests.get")
-    def test_parse_error_response(self, mock_get):
+    def test_parse_error_response(self, mock_get: Mock) -> None:
         """Test error handling in _parse_response method"""
         # Mock the error response
         mock_response = Mock()

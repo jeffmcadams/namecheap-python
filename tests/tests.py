@@ -4,6 +4,7 @@ Test suite for the Namecheap Python SDK
 """
 
 import unittest
+from typing import Any, Dict, List, Optional
 from unittest.mock import Mock, patch
 
 from namecheap import NamecheapClient, NamecheapException
@@ -12,7 +13,7 @@ from namecheap import NamecheapClient, NamecheapException
 class TestNamecheapClient(unittest.TestCase):
     """Test cases for the Namecheap API client"""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up test environment"""
         self.client = NamecheapClient(
             api_user="test_user",
@@ -23,7 +24,7 @@ class TestNamecheapClient(unittest.TestCase):
             debug=False,
         )
 
-    def test_initialization(self):
+    def test_initialization(self) -> None:
         """Test client initialization"""
         self.assertEqual(self.client.api_user, "test_user")
         self.assertEqual(self.client.api_key, "test_key")
@@ -35,7 +36,7 @@ class TestNamecheapClient(unittest.TestCase):
         self.assertEqual(self.client.debug, False)
 
     @patch("requests.get")
-    def test_make_request(self, mock_get):
+    def test_make_request(self, mock_get: Mock) -> None:
         """Test making a request to the API"""
         # Mock successful response
         mock_response = Mock()
@@ -62,14 +63,12 @@ class TestNamecheapClient(unittest.TestCase):
         # Verify request was made correctly
         mock_get.assert_called_once()
         args, kwargs = mock_get.call_args
-        self.assertEqual(
-            args[0], "https://api.sandbox.namecheap.com/xml.response")
+        self.assertEqual(args[0], "https://api.sandbox.namecheap.com/xml.response")
         self.assertEqual(kwargs["params"]["ApiUser"], "test_user")
         self.assertEqual(kwargs["params"]["ApiKey"], "test_key")
         self.assertEqual(kwargs["params"]["UserName"], "test_user")
         self.assertEqual(kwargs["params"]["ClientIp"], "127.0.0.1")
-        self.assertEqual(kwargs["params"]["Command"],
-                         "namecheap.domains.check")
+        self.assertEqual(kwargs["params"]["Command"], "namecheap.domains.check")
         self.assertEqual(kwargs["params"]["DomainList"], "example.com")
 
         # Verify result is parsed correctly
@@ -89,7 +88,7 @@ class TestNamecheapClient(unittest.TestCase):
             )  # Should be converted to a bool
 
     @patch("requests.get")
-    def test_error_response(self, mock_get):
+    def test_error_response(self, mock_get: Mock) -> None:
         """Test handling API error responses"""
         # Mock error response
         mock_response = Mock()
@@ -121,7 +120,7 @@ class TestNamecheapClient(unittest.TestCase):
         )
 
     @patch("requests.get")
-    def test_domains_check(self, mock_get):
+    def test_domains_check(self, mock_get: Mock) -> None:
         """Test domains_check method"""
         # Mock successful response
         mock_response = Mock()
@@ -148,28 +147,23 @@ class TestNamecheapClient(unittest.TestCase):
         # Verify request
         mock_get.assert_called_once()
         args, kwargs = mock_get.call_args
-        self.assertEqual(kwargs["params"]["Command"],
-                         "namecheap.domains.check")
-        self.assertEqual(kwargs["params"]["DomainList"],
-                         "example.com,example.net")
+        self.assertEqual(kwargs["params"]["Command"], "namecheap.domains.check")
+        self.assertEqual(kwargs["params"]["DomainList"], "example.com,example.net")
 
         # Verify results
         self.assertEqual(len(result["DomainCheckResult"]), 2)
-        self.assertEqual(result["DomainCheckResult"]
-                         [0]["Domain"], "example.com")
+        self.assertEqual(result["DomainCheckResult"][0]["Domain"], "example.com")
         self.assertEqual(result["DomainCheckResult"][0]["Available"], False)
-        self.assertEqual(result["DomainCheckResult"]
-                         [1]["Domain"], "example.net")
+        self.assertEqual(result["DomainCheckResult"][1]["Domain"], "example.net")
         self.assertEqual(result["DomainCheckResult"][1]["Available"], True)
 
         # Test with too many domains
         with self.assertRaises(ValueError) as context:
-            self.client.domains_check(
-                ["domain" + str(i) + ".com" for i in range(51)])
+            self.client.domains_check(["domain" + str(i) + ".com" for i in range(51)])
         self.assertIn("Maximum of 50 domains", str(context.exception))
 
     @patch("namecheap.client.NamecheapClient._make_request")
-    def test_domains_get_list(self, mock_make_request):
+    def test_domains_get_list(self, mock_make_request: Mock) -> None:
         """Test domains_get_list method"""
         # Mock successful response
         mock_make_request.return_value = {
@@ -245,7 +239,7 @@ class TestNamecheapClient(unittest.TestCase):
             self.client.domains_get_list(page_size=101)
 
     @patch("namecheap.client.NamecheapClient._make_request")
-    def test_domains_dns_set_hosts(self, mock_make_request):
+    def test_domains_dns_set_hosts(self, mock_make_request: Mock) -> None:
         """Test domains_dns_set_hosts method"""
         # Mock successful response
         mock_make_request.return_value = {
@@ -254,10 +248,8 @@ class TestNamecheapClient(unittest.TestCase):
 
         # Test with valid hosts
         hosts = [
-            {"HostName": "@", "RecordType": "A",
-                "Address": "192.0.2.1", "TTL": "1800"},
-            {"HostName": "www", "RecordType": "CNAME",
-                "Address": "@", "TTL": "1800"},
+            {"HostName": "@", "RecordType": "A", "Address": "192.0.2.1", "TTL": "1800"},
+            {"HostName": "www", "RecordType": "CNAME", "Address": "@", "TTL": "1800"},
             {
                 "HostName": "mail",
                 "RecordType": "MX",

@@ -7,24 +7,28 @@ Usage:
   python check_domain.py --debug example.com domain2.com domain3.com
 """
 
-import sys
 import argparse
 
 from namecheap import NamecheapClient
-
 from utils.print_table import print_table
 
 # Parse command line arguments
 parser = argparse.ArgumentParser(
-    description="Check domain availability with Namecheap API")
-parser.add_argument('-d', '--debug', action='store_true',
-                    help='Enable debug mode')
-parser.add_argument('domains', nargs='+', help='Domains to check')
+    description="Check domain availability with Namecheap API"
+)
+parser.add_argument("-d", "--debug", action="store_true", help="Enable debug mode")
+parser.add_argument("domains", nargs="+", help="Domains to check")
 
 args = parser.parse_args()
 
 # Create the Namecheap client and check domain availability
-client = NamecheapClient(debug=args.debug)
+client = NamecheapClient(
+    api_user="default",
+    api_key="default",
+    username="default",
+    client_ip="default",
+    debug=args.debug,
+)
 result = client.enhanced.domains.check_with_pricing(args.domains)
 
 # Prepare table data
@@ -41,10 +45,7 @@ for domain in domains:
     price = domain.get("Price", 0)
 
     # If domain is not available, show N/A
-    if domain.get("Available"):
-        price_display = f"${price:.2f}"
-    else:
-        price_display = "N/A"
+    price_display = f"${price:.2f}" if domain.get("Available") else "N/A"
 
     rows.append([domain.get("Domain"), available, premium, price_display])
 

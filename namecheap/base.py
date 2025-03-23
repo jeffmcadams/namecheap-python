@@ -2,10 +2,20 @@
 Base client for interacting with the Namecheap API
 """
 
+import contextlib
 import logging
-from datetime import datetime
 import xml.etree.ElementTree as ET
-from typing import Dict, List, Literal, Mapping, MutableMapping, Optional, TypeVar, Union, overload
+from datetime import datetime
+from typing import (
+    Dict,
+    List,
+    Literal,
+    Mapping,
+    Optional,
+    TypeVar,
+    Union,
+    overload,
+)
 
 import requests
 import xmltodict
@@ -17,7 +27,7 @@ JsonValue = Union[str, bool, int, float, None]
 
 # Types for API responses - preserve structural compatibility with TypedDict
 # Nested data structures to be used with normalize_api_response
-T = TypeVar('T')  # Generic type var for flexibility
+T = TypeVar("T")  # Generic type var for flexibility
 ResponseValue = Union[JsonValue, Dict[str, object], List[object]]
 # We use structural compatibility to avoid casting
 # A Dict[str, object] can be used where TypedDict is expected
@@ -186,7 +196,13 @@ class BaseClient:
             "ClientIp": client_ip,
         }
 
-    def log(self, where: str, message: str, level: str = "DEBUG", data: Optional[Mapping[str, object]] = None) -> None:
+    def log(
+        self,
+        where: str,
+        message: str,
+        level: str = "DEBUG",
+        data: Optional[Mapping[str, object]] = None,
+    ) -> None:
         """
         Centralized logging method for all Namecheap API operations.
 
@@ -202,7 +218,7 @@ class BaseClient:
             "INFO": logging.INFO,
             "WARNING": logging.WARNING,
             "ERROR": logging.ERROR,
-            "CRITICAL": logging.CRITICAL
+            "CRITICAL": logging.CRITICAL,
         }.get(level, logging.INFO)
 
         # Skip DEBUG logs in non-debug mode
@@ -216,7 +232,9 @@ class BaseClient:
             for key, value in sorted(data.items()):
                 # Check if key is sensitive and value is a string without using isinstance
                 is_sensitive = key in ("ApiKey", "Password")
-                should_mask = is_sensitive and hasattr(value, "strip")  # String-like check
+                should_mask = is_sensitive and hasattr(
+                    value, "strip"
+                )  # String-like check
                 log_data[key] = "******" if should_mask else value
 
         # Create the log entry with extra context
@@ -235,9 +253,9 @@ class BaseClient:
         field_mapping: Optional[Dict[str, str]] = None,
         boolean_fields: Optional[List[str]] = None,
         datetime_fields: Optional[List[str]] = None,
-        return_type: Literal["dict"] = "dict"
+        return_type: Literal["dict"] = "dict",
     ) -> ResponseDict: ...
-    
+
     @overload
     def normalize_api_response(
         self,
@@ -246,9 +264,9 @@ class BaseClient:
         field_mapping: Optional[Dict[str, str]] = None,
         boolean_fields: Optional[List[str]] = None,
         datetime_fields: Optional[List[str]] = None,
-        return_type: Literal["list"] = "list"
+        return_type: Literal["list"] = "list",
     ) -> ResponseList: ...
-    
+
     def normalize_api_response(
         self,
         response: ResponseDict,
@@ -256,7 +274,7 @@ class BaseClient:
         field_mapping: Optional[Dict[str, str]] = None,
         boolean_fields: Optional[List[str]] = None,
         datetime_fields: Optional[List[str]] = None,
-        return_type: str = "dict"
+        return_type: str = "dict",
     ) -> Union[ResponseDict, ResponseList]:
         """
         Normalizes API responses to a consistent format.
@@ -275,7 +293,7 @@ class BaseClient:
         """
         # Extract data from result_key if provided
         extracted_data = self._extract_nested_data(response, result_key)
-        
+
         # Initialize defaults
         field_mapping = field_mapping or {}
         boolean_fields = boolean_fields or []
@@ -284,43 +302,35 @@ class BaseClient:
         # Process according to desired return type
         if return_type == "list":
             return self._normalize_to_list(
-                extracted_data, 
-                field_mapping,
-                boolean_fields,
-                datetime_fields
+                extracted_data, field_mapping, boolean_fields, datetime_fields
             )
         else:  # return_type == "dict"
             return self._normalize_to_dict(
-                extracted_data,
-                field_mapping,
-                boolean_fields,
-                datetime_fields
+                extracted_data, field_mapping, boolean_fields, datetime_fields
             )
-            
+
     def _extract_nested_data(
-        self, 
-        data: ResponseDict, 
-        path: Optional[str]
+        self, data: ResponseDict, path: Optional[str]
     ) -> Union[ResponseDict, ResponseList, None]:
         """
         Safely extracts nested data from a dictionary using a dot-notation path.
-        
+
         Args:
             data: The dictionary to extract data from
             path: Dot-notation path (e.g., "DomainGetListResult.Domain")
-            
+
         Returns:
             Extracted data or None if path not found
         """
         if not path:
             return data
-            
+
         current_data: Union[ResponseDict, ResponseList, None] = data
         for key in path.split("."):
             # Check if current_data is a dict and contains the key
             if not isinstance(current_data, dict) or key not in current_data:
                 return None
-            
+
             # Move to the next level
             next_data = current_data[key]
             # Ensure type safety
@@ -328,39 +338,41 @@ class BaseClient:
                 current_data = {"value": next_data}
             else:
                 current_data = next_data
-            
+
             # If we get a non-container value, we can't traverse further
-            if not isinstance(current_data, dict) and not isinstance(current_data, list):
+            if not isinstance(current_data, dict) and not isinstance(
+                current_data, list
+            ):
                 return None
-                
+
         return current_data
-        
+
     def _normalize_to_list(
         self,
         data: Union[ResponseDict, ResponseList, None],
         field_mapping: Dict[str, str],
         boolean_fields: List[str],
-        datetime_fields: List[str]
+        datetime_fields: List[str],
     ) -> ResponseList:
         """
         Normalize data to a list of dictionaries.
-        
+
         Args:
             data: Data to normalize
             field_mapping: Field name mapping
             boolean_fields: Fields to convert to boolean
             datetime_fields: Fields to convert to datetime
-            
+
         Returns:
             List of normalized dictionaries
         """
         # Handle None case
         if data is None:
             return []
-            
+
         # Convert to list if it's a dictionary
         items_to_process: List[ResponseDict] = []
-        
+
         # Check if data has dict-like behavior
         if isinstance(data, dict):
             items_to_process = [data]
@@ -374,62 +386,60 @@ class BaseClient:
         # Default case: empty list
         else:
             return []
-            
+
         # Process each item
         result: ResponseList = []
         for item in items_to_process:
             if isinstance(item, dict):  # Dict-like
                 normalized = self._normalize_item(
-                    item,
-                    field_mapping,
-                    boolean_fields,
-                    datetime_fields
+                    item, field_mapping, boolean_fields, datetime_fields
                 )
                 result.append(normalized)
             elif isinstance(item, str):  # String-like
                 result.append({"Value": item})
             else:
                 # Log but skip items we can't process
-                self.log("API.NORMALIZE",
-                         f"Skipping item that cannot be normalized in list", "WARNING")
-        
+                self.log(
+                    "API.NORMALIZE",
+                    "Skipping item that cannot be normalized in list",
+                    "WARNING",
+                )
+
         return result
-        
+
     def _normalize_to_dict(
         self,
         data: Union[ResponseDict, ResponseList, None],
         field_mapping: Dict[str, str],
         boolean_fields: List[str],
-        datetime_fields: List[str]
+        datetime_fields: List[str],
     ) -> ResponseDict:
         """
         Normalize data to a single dictionary.
-        
+
         Args:
             data: Data to normalize
             field_mapping: Field name mapping
             boolean_fields: Fields to convert to boolean
             datetime_fields: Fields to convert to datetime
-            
+
         Returns:
             Normalized dictionary
         """
         # Handle None case
         if data is None:
             return {}
-            
+
         # If data has dict-like behavior, normalize it
         if isinstance(data, dict):
             return self._normalize_item(
-                data,
-                field_mapping,
-                boolean_fields,
-                datetime_fields
+                data, field_mapping, boolean_fields, datetime_fields
             )
-            
+
         # Otherwise, return empty dict
-        self.log("API.NORMALIZE",
-                 f"Cannot normalize non-dict data to dict type", "WARNING")
+        self.log(
+            "API.NORMALIZE", "Cannot normalize non-dict data to dict type", "WARNING"
+        )
         return {}
 
     def _normalize_item(
@@ -437,7 +447,7 @@ class BaseClient:
         item: Dict[str, object],
         field_mapping: Dict[str, str],
         boolean_fields: List[str],
-        datetime_fields: List[str]
+        datetime_fields: List[str],
     ) -> Dict[str, object]:
         """
         Normalize a single item using the provided mappings and type conversions
@@ -468,44 +478,41 @@ class BaseClient:
 
             # Convert datetime fields if the value has string characteristics
             if normalized_key in datetime_fields and isinstance(normalized_value, str):
-                try:
+                with contextlib.suppress(ValueError, TypeError, AttributeError):
                     normalized_value = datetime.strptime(normalized_value, "%m/%d/%Y")
-                except (ValueError, TypeError, AttributeError):
-                    # If we can't parse the date, keep the original value
-                    pass
 
             # Add to result
             result[normalized_key] = normalized_value
 
         return result
-        
+
     def _normalize_value(self, value: object) -> object:
         """
         Normalize a value based on its type characteristics
-        
+
         Args:
             value: The value to normalize
-            
+
         Returns:
             Normalized value suitable for API response
         """
         # Handle None case
         if value is None:
             return None
-            
+
         # Check for simple types that can be returned as-is
         # String-like: has strip method
         if hasattr(value, "strip"):
             return value
-            
+
         # Number-like: has real attribute (float) or denominator (int)
         if hasattr(value, "real") or hasattr(value, "denominator"):
             return value
-            
+
         # Boolean-like: value is exactly True or False
         if value is True or value is False:
             return value
-            
+
         # For complex types, convert to string representation
         return str(value)
 
@@ -519,12 +526,14 @@ class BaseClient:
         Returns:
             Boolean value
         """
-        return value.lower() in ('true', 'yes', 'enabled', '1', 'on')
+        return value.lower() in ("true", "yes", "enabled", "1", "on")
 
     def _make_request(
-        self, command: str, params: Optional[Mapping[str, object]] = None,
+        self,
+        command: str,
+        params: Optional[Mapping[str, object]] = None,
         error_codes: Optional[Mapping[str, Dict[str, str]]] = None,
-        context: Optional[Mapping[str, object]] = None
+        context: Optional[Mapping[str, object]] = None,
     ) -> ResponseDict:
         """
         Make a request to the Namecheap API with centralized error handling
@@ -557,7 +566,7 @@ class BaseClient:
             "API.REQUEST",
             f"Sending request to {self.base_url} with command {command}",
             "DEBUG",
-            debug_params
+            debug_params,
         )
 
         try:
@@ -571,7 +580,7 @@ class BaseClient:
                 "API.RESPONSE",
                 f"Received response with status {response.status_code}",
                 "DEBUG",
-                {"Content-Length": len(response.text), "Preview": preview}
+                {"Content-Length": len(response.text), "Preview": preview},
             )
 
             response.raise_for_status()
@@ -586,13 +595,14 @@ class BaseClient:
             raise NamecheapException(
                 "CONNECTION_ERROR",
                 f"Failed to connect to Namecheap API: {str(e)}",
-                self
+                self,
             )
 
     def _parse_response(
-        self, response: requests.Response,
+        self,
+        response: requests.Response,
         error_codes: Optional[Mapping[str, Dict[str, str]]] = None,
-        context: Optional[Mapping[str, object]] = None
+        context: Optional[Mapping[str, object]] = None,
     ) -> ResponseDict:
         """
         Parse the API response and handle errors.
@@ -643,10 +653,10 @@ class BaseClient:
                             placeholder = "{" + k + "}"
                             if error_explanation and placeholder in error_explanation:
                                 error_explanation = error_explanation.replace(
-                                    placeholder, str(v))
+                                    placeholder, str(v)
+                                )
                             if error_fix and placeholder in error_fix:
-                                error_fix = error_fix.replace(
-                                    placeholder, str(v))
+                                error_fix = error_fix.replace(placeholder, str(v))
                 else:
                     error_explanation = None
                     error_fix = None
@@ -657,9 +667,12 @@ class BaseClient:
                 # Debug: Print full response for errors
                 if self.debug:
                     print(
-                        f"\n[NAMECHEAP.API.ERROR] (ERROR) API Error: {error_num}: {error_msg}")
-                    print(f"Full XML Response:\n{response.text[:2000]}" +
-                          ("..." if len(response.text) > 2000 else ""))
+                        f"\n[NAMECHEAP.API.ERROR] (ERROR) API Error: {error_num}: {error_msg}"
+                    )
+                    print(
+                        f"Full XML Response:\n{response.text[:2000]}"
+                        + ("..." if len(response.text) > 2000 else "")
+                    )
 
                 # Raise exception with details
                 raise NamecheapException(
@@ -668,7 +681,7 @@ class BaseClient:
                     message=error_msg,
                     explanation=error_explanation,
                     fix=error_fix,
-                    raw_response=response.text
+                    raw_response=response.text,
                 )
 
             # Return the command response section if successful
@@ -683,8 +696,7 @@ class BaseClient:
                     client=self,
                     code="PARSE_ERROR",
                     message=f"Failed to parse API response: {str(e)}",
-                    raw_response=response.text if hasattr(
-                        response, 'text') else None
+                    raw_response=response.text if hasattr(response, "text") else None,
                 )
             raise
 
@@ -723,7 +735,7 @@ class BaseClient:
             if tag in result:
                 # Get the current value
                 current_value = result[tag]
-                
+
                 # Type check for list
                 if isinstance(current_value, list):
                     # Safe to append since we've verified it's a list

@@ -1,11 +1,12 @@
 """
 Nameserver operations for domains API
 """
-from typing import Dict, List, Optional, TypedDict, Union, cast
+
+from typing import Dict, List, TypedDict
 
 import tldextract
 
-from ...base import BaseClient, ResponseDict
+from ...base import BaseClient
 from ...exceptions import NamecheapException
 
 # Define proper types for nameserver operations
@@ -45,20 +46,20 @@ class NameserverDeleteResult(TypedDict):
 COMMON_NS_ERRORS = {
     "2019166": {
         "explanation": "Domain not found",
-        "fix": "Verify the domain exists and is spelled correctly"
+        "fix": "Verify the domain exists and is spelled correctly",
     },
     "2016166": {
         "explanation": "Domain is not associated with your account",
-        "fix": "Check that the domain is registered with your Namecheap account"
+        "fix": "Check that the domain is registered with your Namecheap account",
     },
     "2011177": {
         "explanation": "Nameserver is invalid",
-        "fix": "Ensure the nameserver has proper format (e.g., ns1.example.com)"
+        "fix": "Ensure the nameserver has proper format (e.g., ns1.example.com)",
     },
     "UNKNOWN_ERROR": {
         "explanation": "Operation failed",
-        "fix": "Verify that '{domain_name}' exists and all parameters are correct"
-    }
+        "fix": "Verify that '{domain_name}' exists and all parameters are correct",
+    },
 }
 
 
@@ -101,8 +102,8 @@ class NsAPI:
             **COMMON_NS_ERRORS,
             "UNKNOWN_ERROR": {
                 "explanation": "Failed to get nameservers",
-                "fix": "Verify that '{domain_name}' exists and is registered with Namecheap"
-            }
+                "fix": "Verify that '{domain_name}' exists and is registered with Namecheap",
+            },
         }
 
         extract = tldextract.extract(domain_name)
@@ -114,20 +115,19 @@ class NsAPI:
             "namecheap.domains.ns.getList",
             params,
             error_codes,
-            {"domain_name": domain_name}
+            {"domain_name": domain_name},
         )
 
         # Extract the nameservers from the response
-        nameserver_list: List[Dict[str, str]] = []
 
         # Extract data from response, using dict access only when we know it's a dict
         ns_result = response.get("DomainNSInfoResult")
-        
+
         # Create safe dictionary to work with
         ns_dict = {}
         if isinstance(ns_result, dict):
             ns_dict = ns_result
-        
+
         # Get nameserver data with proper typing
         ns_data = ns_dict.get("Nameserver", [])
 
@@ -154,13 +154,12 @@ class NsAPI:
             elif isinstance(ns, str):
                 nameservers.append({"Nameserver": ns})
 
-        result: NameserversResult = {
-            "nameservers": nameservers,
-            "domain": domain_name
-        }
+        result: NameserversResult = {"nameservers": nameservers, "domain": domain_name}
         return result
 
-    def create(self, domain_name: str, nameserver: str, ip: str) -> NameserverCreateResult:
+    def create(
+        self, domain_name: str, nameserver: str, ip: str
+    ) -> NameserverCreateResult:
         """
         Create a new nameserver for a domain
 
@@ -187,45 +186,40 @@ class NsAPI:
             **COMMON_NS_ERRORS,
             "2011170": {
                 "explanation": "Parameter Ns was not specified",
-                "fix": "Ensure nameserver parameter is provided"
+                "fix": "Ensure nameserver parameter is provided",
             },
             "2011171": {
                 "explanation": "Parameter Ns is invalid",
-                "fix": "Ensure nameserver is in a valid format (e.g., ns1.example.com)"
+                "fix": "Ensure nameserver is in a valid format (e.g., ns1.example.com)",
             },
             "2011173": {
                 "explanation": "Parameter Ip was not specified",
-                "fix": "Ensure IP address is provided"
+                "fix": "Ensure IP address is provided",
             },
             "2011172": {
                 "explanation": "Parameter Ip is invalid",
-                "fix": "Ensure IP is in a valid IPv4 format (e.g., 192.0.2.1)"
+                "fix": "Ensure IP is in a valid IPv4 format (e.g., 192.0.2.1)",
             },
             "2011174": {
                 "explanation": "Nameserver already exists",
-                "fix": "The nameserver '{nameserver}' already exists for domain '{domain_name}'"
+                "fix": "The nameserver '{nameserver}' already exists for domain '{domain_name}'",
             },
             "UNKNOWN_ERROR": {
                 "explanation": "Failed to create nameserver",
-                "fix": "Verify all parameters and try again"
-            }
+                "fix": "Verify all parameters and try again",
+            },
         }
 
         extract = tldextract.extract(domain_name)
         sld, tld = extract.domain, extract.suffix
-        params = {
-            "SLD": sld,
-            "TLD": tld,
-            "Nameserver": nameserver,
-            "IP": ip
-        }
+        params = {"SLD": sld, "TLD": tld, "Nameserver": nameserver, "IP": ip}
 
         # Make the API call with centralized error handling
         _ = self.client._make_request(
             "namecheap.domains.ns.create",
             params,
             error_codes,
-            {"domain_name": domain_name, "nameserver": nameserver}
+            {"domain_name": domain_name, "nameserver": nameserver},
         )
 
         # If we got here, the API call was successful
@@ -233,7 +227,7 @@ class NsAPI:
         result: NameserverCreateResult = {
             "domain": domain_name,
             "nameserver": nameserver,
-            "ip": ip
+            "ip": ip,
         }
         return result
 
@@ -268,28 +262,28 @@ class NsAPI:
             **COMMON_NS_ERRORS,
             "2011170": {
                 "explanation": "Parameter Ns was not specified",
-                "fix": "Ensure nameserver parameter is provided"
+                "fix": "Ensure nameserver parameter is provided",
             },
             "2011171": {
                 "explanation": "Parameter Ns is invalid",
-                "fix": "Ensure nameserver is in a valid format (e.g., ns1.example.com)"
+                "fix": "Ensure nameserver is in a valid format (e.g., ns1.example.com)",
             },
             "2011172": {
                 "explanation": "Parameter IP is invalid",
-                "fix": "Ensure IP is in a valid IPv4 format (e.g., 192.0.2.1)"
+                "fix": "Ensure IP is in a valid IPv4 format (e.g., 192.0.2.1)",
             },
             "2011173": {
                 "explanation": "Parameter IP was not specified",
-                "fix": "Ensure new IP address is provided"
+                "fix": "Ensure new IP address is provided",
             },
             "2011175": {
                 "explanation": "Nameserver doesn't exist",
-                "fix": "The nameserver '{nameserver}' doesn't exist for domain '{domain_name}'"
+                "fix": "The nameserver '{nameserver}' doesn't exist for domain '{domain_name}'",
             },
             "UNKNOWN_ERROR": {
                 "explanation": "Failed to update nameserver",
-                "fix": "Verify all parameters and try again"
-            }
+                "fix": "Verify all parameters and try again",
+            },
         }
 
         extract = tldextract.extract(domain_name)
@@ -299,7 +293,7 @@ class NsAPI:
             "TLD": tld,
             "Nameserver": nameserver,
             "OldIP": old_ip,
-            "IP": new_ip
+            "IP": new_ip,
         }
 
         # Make the API call with centralized error handling
@@ -307,7 +301,7 @@ class NsAPI:
             "namecheap.domains.ns.update",
             params,
             error_codes,
-            {"domain_name": domain_name, "nameserver": nameserver}
+            {"domain_name": domain_name, "nameserver": nameserver},
         )
 
         # If we got here, the API call was successful
@@ -316,7 +310,7 @@ class NsAPI:
             "domain": domain_name,
             "nameserver": nameserver,
             "old_ip": old_ip,
-            "new_ip": new_ip
+            "new_ip": new_ip,
         }
         return result
 
@@ -344,43 +338,39 @@ class NsAPI:
             **COMMON_NS_ERRORS,
             "2011170": {
                 "explanation": "Parameter Ns was not specified",
-                "fix": "Ensure nameserver parameter is provided"
+                "fix": "Ensure nameserver parameter is provided",
             },
             "2011171": {
                 "explanation": "Parameter Ns is invalid",
-                "fix": "Ensure nameserver is in a valid format (e.g., ns1.example.com)"
+                "fix": "Ensure nameserver is in a valid format (e.g., ns1.example.com)",
             },
             "2011175": {
                 "explanation": "Nameserver doesn't exist",
-                "fix": "The nameserver '{nameserver}' doesn't exist for domain '{domain_name}'"
+                "fix": "The nameserver '{nameserver}' doesn't exist for domain '{domain_name}'",
             },
             "UNKNOWN_ERROR": {
                 "explanation": "Failed to delete nameserver",
-                "fix": "Verify all parameters and try again"
-            }
+                "fix": "Verify all parameters and try again",
+            },
         }
 
         extract = tldextract.extract(domain_name)
         sld, tld = extract.domain, extract.suffix
-        params = {
-            "SLD": sld,
-            "TLD": tld,
-            "Nameserver": nameserver
-        }
+        params = {"SLD": sld, "TLD": tld, "Nameserver": nameserver}
 
         # Make the API call with centralized error handling
         _ = self.client._make_request(
             "namecheap.domains.ns.delete",
             params,
             error_codes,
-            {"domain_name": domain_name, "nameserver": nameserver}
+            {"domain_name": domain_name, "nameserver": nameserver},
         )
 
         # If we got here, the API call was successful
         # Return the result with the provided information
         result: NameserverDeleteResult = {
             "domain": domain_name,
-            "nameserver": nameserver
+            "nameserver": nameserver,
         }
         return result
 
@@ -426,7 +416,7 @@ class NsAPI:
         raise NamecheapException(
             f"Nameserver '{nameserver}' not found for domain '{domain_name}'",
             "Verify that the nameserver exists for this domain",
-            "2011175"  # Using a general "nameserver not found" error code
+            "2011175",  # Using a general "nameserver not found" error code
         )
 
     def get(self, domain_name: str, nameserver: str, ip: str = "") -> Dict[str, str]:
@@ -474,5 +464,5 @@ class NsAPI:
         raise NamecheapException(
             f"Nameserver '{nameserver}' not found for domain '{domain_name}'",
             "Verify that the nameserver exists and is correctly specified",
-            "2011175"  # Using a general "nameserver not found" error code
+            "2011175",  # Using a general "nameserver not found" error code
         )

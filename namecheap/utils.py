@@ -22,8 +22,8 @@ if TYPE_CHECKING:
     from .client import NamecheapClient
 
 # Type for the generic response
-T = TypeVar('T', Dict[str, Any], List[Dict[str, Any]])
-K = TypeVar('K')  # Generic type for type conversion utilities
+T = TypeVar("T", Dict[str, Any], List[Dict[str, Any]])
+K = TypeVar("K")  # Generic type for type conversion utilities
 
 
 def get_public_ip() -> Optional[str]:
@@ -92,8 +92,7 @@ def setup_interactive() -> None:
 
     # Ask for values
     username = (
-        input(
-            f"Enter your Namecheap username [{existing_user}]: ") or existing_user
+        input(f"Enter your Namecheap username [{existing_user}]: ") or existing_user
     )
     api_key = (
         input(
@@ -102,8 +101,7 @@ def setup_interactive() -> None:
         or existing_key
     )
     client_ip = (
-        input(
-            f"Enter your whitelisted IP address [{existing_ip}]: ") or existing_ip
+        input(f"Enter your whitelisted IP address [{existing_ip}]: ") or existing_ip
     )
 
     use_sandbox = input(
@@ -123,8 +121,7 @@ def setup_interactive() -> None:
     print("\nCredentials saved to .env file.")
 
     # Offer to test the connection
-    test_now = input(
-        "\nWould you like to test the API connection now? (y/n): ")
+    test_now = input("\nWould you like to test the API connection now? (y/n): ")
     if test_now.lower() in ("y", "yes"):
         success = test_api_connection()
         if success:
@@ -379,39 +376,45 @@ def _test_tld_list(client: "NamecheapClient") -> bool:
 
 # Type adapter utilities for proper type handling
 
-def adapt_dict(source: Dict[str, Any], target_type: Type[K], defaults: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+
+def adapt_dict(
+    source: Dict[str, Any],
+    target_type: Type[K],
+    defaults: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     """
     Adapts a dictionary to match a TypedDict structure.
-    
+
     Args:
         source: Source dictionary with data
         target_type: Target TypedDict class
         defaults: Default values for missing fields
-        
+
     Returns:
         A dictionary with data from source matching the target type's structure
     """
     result = {}
-    
+
     # Get annotations if available (for TypedDict)
     annotations = getattr(target_type, "__annotations__", {})
-    
+
     # Add values from the source dict that match the target type's fields
     for field in annotations:
         if field in source:
             result[field] = source[field]
         elif defaults and field in defaults:
             result[field] = defaults[field]
-    
+
     return result
+
 
 def ensure_list(value: Any) -> List[Any]:
     """
     Ensures a value is a list.
-    
+
     Args:
         value: The value to convert to a list if it's not already
-        
+
     Returns:
         value as a list, or [value] if it's not a list
     """
@@ -421,25 +424,26 @@ def ensure_list(value: Any) -> List[Any]:
         return value
     return [value]
 
+
 def safe_get(dictionary: Dict[str, Any], *keys: str, default: Any = None) -> Any:
     """
     Safely get a nested value from a dictionary with a fallback default.
-    
+
     Args:
         dictionary: The dictionary to extract data from
         *keys: One or more key names to navigate through the nested structure
         default: The default value to return if any key is missing
-        
+
     Returns:
         The value at the specified path or the default value
     """
     if not dictionary or not isinstance(dictionary, dict):
         return default
-        
+
     current = dictionary
     for key in keys:
         if not isinstance(current, dict) or key not in current:
             return default
         current = current[key]
-    
+
     return current

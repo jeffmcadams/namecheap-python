@@ -1,11 +1,12 @@
 """
 Base domain operations for the Namecheap API
 """
-from typing import Dict, List, Optional, TypedDict, Union, cast
+
+from typing import Dict, List, Optional, TypedDict
 
 import tldextract
 
-from ...base import BaseClient, ResponseDict, ResponseItem, ResponseList
+from ...base import BaseClient
 
 # Define proper types for the API responses
 
@@ -83,20 +84,20 @@ class TldListResult(TypedDict):
 COMMON_DOMAIN_ERRORS = {
     "2019166": {
         "explanation": "Domain not found",
-        "fix": "Verify the domain exists and is spelled correctly"
+        "fix": "Verify the domain exists and is spelled correctly",
     },
     "2016166": {
         "explanation": "Domain is not associated with your account",
-        "fix": "Check that the domain is registered with your Namecheap account"
+        "fix": "Check that the domain is registered with your Namecheap account",
     },
     "2030166": {
         "explanation": "Domain name not available",
-        "fix": "The domain may be taken or not available for registration"
+        "fix": "The domain may be taken or not available for registration",
     },
     "UNKNOWN_ERROR": {
         "explanation": "Domain operation failed",
-        "fix": "Verify all parameters are correct and try again"
-    }
+        "fix": "Verify all parameters are correct and try again",
+    },
 }
 
 
@@ -141,20 +142,20 @@ class DomainsBaseAPI:
         error_codes = {
             "2030166": {
                 "explanation": "Invalid request syntax",
-                "fix": "Check that domain names are properly formatted"
+                "fix": "Check that domain names are properly formatted",
             },
             "2030180": {
                 "explanation": "TLD is not supported",
-                "fix": "This TLD is not supported for availability check"
+                "fix": "This TLD is not supported for availability check",
             },
             "2030283": {
                 "explanation": "Too many domain names provided",
-                "fix": "Maximum of 50 domains can be checked at once"
+                "fix": "Maximum of 50 domains can be checked at once",
             },
             "UNKNOWN_ERROR": {
                 "explanation": "Failed to check domain availability",
-                "fix": "Check the domain formats and try again"
-            }
+                "fix": "Check the domain formats and try again",
+            },
         }
 
         # Prepare domain string, comma-separated
@@ -164,16 +165,14 @@ class DomainsBaseAPI:
         response = self.client._make_request(
             "namecheap.domains.check",
             {"DomainList": domain_list},
-            error_codes=error_codes
+            error_codes=error_codes,
         )
 
         # Use the normalize_api_response method to get results
         results = self.client.normalize_api_response(
-            response=response,
-            result_key="DomainCheckResult",
-            return_type="list"
+            response=response, result_key="DomainCheckResult", return_type="list"
         )
-        
+
         # Results are now properly typed as ResponseList (List[Dict[str, object]])
         return results
 
@@ -233,12 +232,12 @@ class DomainsBaseAPI:
             **COMMON_DOMAIN_ERRORS,
             "2012166": {
                 "explanation": "Failed to retrieve domain list",
-                "fix": "Check that your account has domains"
+                "fix": "Check that your account has domains",
             },
             "UNKNOWN_ERROR": {
                 "explanation": "Failed to retrieve domain list",
-                "fix": "Check API credentials and try again"
-            }
+                "fix": "Check API credentials and try again",
+            },
         }
 
         # Base parameters
@@ -255,9 +254,7 @@ class DomainsBaseAPI:
 
         # Make API request
         response = self.client._make_request(
-            "namecheap.domains.getList",
-            params,
-            error_codes=error_codes
+            "namecheap.domains.getList", params, error_codes=error_codes
         )
 
         # Normalize the domains list
@@ -265,7 +262,7 @@ class DomainsBaseAPI:
             response=response,
             result_key="DomainGetListResult.Domain",
             datetime_fields=["Created", "Expires"],
-            return_type="list"
+            return_type="list",
         )
 
         # No casting needed
@@ -273,30 +270,41 @@ class DomainsBaseAPI:
 
         # Get paging information
         paging_info = response.get("DomainGetListResult", {})
-        
+
         # Define helper function to parse integers safely
         def parse_int(value: object) -> int:
             if value is None:
                 return 0
-                
+
             try:
                 return int(str(value))
             except (ValueError, TypeError):
                 return 0
-        
+
         # Build paging info with proper typing
         paging: Dict[str, object] = {
-            "total_items": parse_int(paging_info.get("@TotalItems") if isinstance(paging_info, dict) else None),
-            "total_pages": parse_int(paging_info.get("@TotalPages") if isinstance(paging_info, dict) else None),
-            "current_page": parse_int(paging_info.get("@CurrentPage") if isinstance(paging_info, dict) else None),
-            "page_size": parse_int(paging_info.get("@PageSize") if isinstance(paging_info, dict) else None)
+            "total_items": parse_int(
+                paging_info.get("@TotalItems")
+                if isinstance(paging_info, dict)
+                else None
+            ),
+            "total_pages": parse_int(
+                paging_info.get("@TotalPages")
+                if isinstance(paging_info, dict)
+                else None
+            ),
+            "current_page": parse_int(
+                paging_info.get("@CurrentPage")
+                if isinstance(paging_info, dict)
+                else None
+            ),
+            "page_size": parse_int(
+                paging_info.get("@PageSize") if isinstance(paging_info, dict) else None
+            ),
         }
 
         # Construct a compatible dictionary with explicit type annotation
-        result: Dict[str, object] = {
-            "domains": domains,
-            "paging": paging
-        }
+        result: Dict[str, object] = {"domains": domains, "paging": paging}
         return result
 
     def get_contacts(self, domain_name: str) -> Dict[str, object]:
@@ -329,12 +337,12 @@ class DomainsBaseAPI:
             **COMMON_DOMAIN_ERRORS,
             "4019337": {
                 "explanation": "Unable to retrieve domain contacts",
-                "fix": "The domain contacts may not be accessible or properly configured"
+                "fix": "The domain contacts may not be accessible or properly configured",
             },
             "UNKNOWN_ERROR": {
                 "explanation": "Failed to get domain contacts",
-                "fix": "Verify that '{domain_name}' exists and is registered with Namecheap"
-            }
+                "fix": "Verify that '{domain_name}' exists and is registered with Namecheap",
+            },
         }
 
         extract = tldextract.extract(domain_name)
@@ -346,7 +354,7 @@ class DomainsBaseAPI:
             "namecheap.domains.getContacts",
             params,
             error_codes,
-            {"domain_name": domain_name}
+            {"domain_name": domain_name},
         )
 
         # Contact types to extract
@@ -377,7 +385,7 @@ class DomainsBaseAPI:
             "registrant": {},
             "tech": {},
             "admin": {},
-            "auxbilling": {}
+            "auxbilling": {},
         }
 
         # Extract contact information for each type
@@ -386,7 +394,10 @@ class DomainsBaseAPI:
             for contact_type in contact_types:
                 # Get contact data safely
                 contact_data: Dict[str, object] = {}
-                if isinstance(domain_contacts, dict) and contact_type in domain_contacts:
+                if (
+                    isinstance(domain_contacts, dict)
+                    and contact_type in domain_contacts
+                ):
                     contact_value = domain_contacts[contact_type]
                     if isinstance(contact_value, dict):
                         contact_data = contact_value
@@ -412,7 +423,9 @@ class DomainsBaseAPI:
                     if "last_name" in temp_contact_info:
                         registrant_info["last_name"] = temp_contact_info["last_name"]
                     if "organization" in temp_contact_info:
-                        registrant_info["organization"] = temp_contact_info["organization"]
+                        registrant_info["organization"] = temp_contact_info[
+                            "organization"
+                        ]
                     if "job_title" in temp_contact_info:
                         registrant_info["job_title"] = temp_contact_info["job_title"]
                     if "address1" in temp_contact_info:
@@ -424,9 +437,13 @@ class DomainsBaseAPI:
                     if "state" in temp_contact_info:
                         registrant_info["state"] = temp_contact_info["state"]
                     if "state_choice" in temp_contact_info:
-                        registrant_info["state_choice"] = temp_contact_info["state_choice"]
+                        registrant_info["state_choice"] = temp_contact_info[
+                            "state_choice"
+                        ]
                     if "postal_code" in temp_contact_info:
-                        registrant_info["postal_code"] = temp_contact_info["postal_code"]
+                        registrant_info["postal_code"] = temp_contact_info[
+                            "postal_code"
+                        ]
                     if "country" in temp_contact_info:
                         registrant_info["country"] = temp_contact_info["country"]
                     if "phone" in temp_contact_info:
@@ -511,7 +528,9 @@ class DomainsBaseAPI:
                     if "last_name" in temp_contact_info:
                         auxbilling_info["last_name"] = temp_contact_info["last_name"]
                     if "organization" in temp_contact_info:
-                        auxbilling_info["organization"] = temp_contact_info["organization"]
+                        auxbilling_info["organization"] = temp_contact_info[
+                            "organization"
+                        ]
                     if "job_title" in temp_contact_info:
                         auxbilling_info["job_title"] = temp_contact_info["job_title"]
                     if "address1" in temp_contact_info:
@@ -523,9 +542,13 @@ class DomainsBaseAPI:
                     if "state" in temp_contact_info:
                         auxbilling_info["state"] = temp_contact_info["state"]
                     if "state_choice" in temp_contact_info:
-                        auxbilling_info["state_choice"] = temp_contact_info["state_choice"]
+                        auxbilling_info["state_choice"] = temp_contact_info[
+                            "state_choice"
+                        ]
                     if "postal_code" in temp_contact_info:
-                        auxbilling_info["postal_code"] = temp_contact_info["postal_code"]
+                        auxbilling_info["postal_code"] = temp_contact_info[
+                            "postal_code"
+                        ]
                     if "country" in temp_contact_info:
                         auxbilling_info["country"] = temp_contact_info["country"]
                     if "phone" in temp_contact_info:
@@ -566,12 +589,12 @@ class DomainsBaseAPI:
             **COMMON_DOMAIN_ERRORS,
             "5019169": {
                 "explanation": "Unknown exception occurred",
-                "fix": "Try again later or contact Namecheap support"
+                "fix": "Try again later or contact Namecheap support",
             },
             "UNKNOWN_ERROR": {
                 "explanation": "Failed to get domain information",
-                "fix": "Verify that '{domain_name}' exists and is registered with Namecheap"
-            }
+                "fix": "Verify that '{domain_name}' exists and is registered with Namecheap",
+            },
         }
 
         extract = tldextract.extract(domain_name)
@@ -583,7 +606,7 @@ class DomainsBaseAPI:
             "namecheap.domains.getInfo",
             params,
             error_codes,
-            {"domain_name": domain_name}
+            {"domain_name": domain_name},
         )
         return response
 
@@ -613,30 +636,24 @@ class DomainsBaseAPI:
             **COMMON_DOMAIN_ERRORS,
             "UNKNOWN_ERROR": {
                 "explanation": "Failed to get TLD list",
-                "fix": "Try again later or contact Namecheap support"
-            }
+                "fix": "Try again later or contact Namecheap support",
+            },
         }
 
         # Make the API call with centralized error handling
         response = self.client._make_request(
-            "namecheap.domains.getTldList",
-            {},
-            error_codes=error_codes
+            "namecheap.domains.getTldList", {}, error_codes=error_codes
         )
 
         # Get TLDs from response
         tlds_raw = self.client.normalize_api_response(
-            response=response,
-            result_key="Tlds.Tld",
-            return_type="list"
+            response=response, result_key="Tlds.Tld", return_type="list"
         )
 
         # No casting needed
         tlds = tlds_raw
 
-        result: Dict[str, object] = {
-            "tlds": tlds
-        }
+        result: Dict[str, object] = {"tlds": tlds}
         return result
 
     def renew(
@@ -668,20 +685,20 @@ class DomainsBaseAPI:
             **COMMON_DOMAIN_ERRORS,
             "2015166": {
                 "explanation": "Failed to update years for your domain",
-                "fix": "Verify that the domain is eligible for renewal"
+                "fix": "Verify that the domain is eligible for renewal",
             },
             "4023166": {
                 "explanation": "Error occurred while renewing domain",
-                "fix": "Check your account balance and domain status"
+                "fix": "Check your account balance and domain status",
             },
             "4022337": {
                 "explanation": "Error in refunding funds",
-                "fix": "Contact Namecheap support for assistance with refund issues"
+                "fix": "Contact Namecheap support for assistance with refund issues",
             },
             "UNKNOWN_ERROR": {
                 "explanation": "Failed to renew domain",
-                "fix": "Verify that '{domain_name}' exists and is eligible for renewal"
-            }
+                "fix": "Verify that '{domain_name}' exists and is eligible for renewal",
+            },
         }
 
         extract = tldextract.extract(domain_name)
@@ -693,9 +710,6 @@ class DomainsBaseAPI:
 
         # Make the API call with centralized error handling
         response = self.client._make_request(
-            "namecheap.domains.renew",
-            params,
-            error_codes,
-            {"domain_name": domain_name}
+            "namecheap.domains.renew", params, error_codes, {"domain_name": domain_name}
         )
         return response

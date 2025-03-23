@@ -1,18 +1,19 @@
 """
 DNS-related operations for domains API
 """
-from typing import Callable, Dict, List, Protocol, Union, runtime_checkable
+
+from typing import Callable, Dict, List, Protocol, runtime_checkable
 
 import tldextract
-
-from ...base import JsonValue, ResponseDict, ResponseItem
 
 
 @runtime_checkable
 class DnsClient(Protocol):
     """Protocol for the DNS client"""
+
     _make_request: Callable
     normalize_api_response: Callable
+
 
 # Constants for default values
 DEFAULT_TTL = "1800"
@@ -24,24 +25,24 @@ DEFAULT_RECORD_TYPE = "A"
 COMMON_DNS_ERRORS = {
     "2016166": {
         "explanation": "Domain is not associated with your account",
-        "fix": "Ensure this domain is registered and active in your Namecheap account."
+        "fix": "Ensure this domain is registered and active in your Namecheap account.",
     },
     "3031510": {
         "explanation": "Enom error when ErrorCount is not 0",
-        "fix": "Check the specific error message from the provider and address accordingly. This often indicates a service issue."
+        "fix": "Check the specific error message from the provider and address accordingly. This often indicates a service issue.",
     },
     "3050900": {
         "explanation": "Unknown error from provider",
-        "fix": "Contact Namecheap support for assistance with this error."
+        "fix": "Contact Namecheap support for assistance with this error.",
     },
     "2030288": {
         "explanation": "Domain is not using Namecheap DNS servers",
-        "fix": "Set the domain to use Namecheap's default DNS servers before using this API method"
+        "fix": "Set the domain to use Namecheap's default DNS servers before using this API method",
     },
     "UNKNOWN_ERROR": {
         "explanation": "Failed to retrieve DNS host records",
-        "fix": "Verify that the domain exists in your Namecheap account and your API credentials have sufficient permissions. If the problem persists, try enabling debug mode for more details."
-    }
+        "fix": "Verify that the domain exists in your Namecheap account and your API credentials have sufficient permissions. If the problem persists, try enabling debug mode for more details.",
+    },
 }
 
 
@@ -62,7 +63,7 @@ class DnsAPI:
         Retrieves DNS host record settings for the requested domain.
 
         Args:
-            domain: Domain name to retrieve DNS settings for 
+            domain: Domain name to retrieve DNS settings for
                     (example: example.com)
 
         Returns:
@@ -96,33 +97,30 @@ class DnsAPI:
         error_codes = {
             "2050166": {
                 "explanation": "Failed to retrieve DNS host records",
-                "fix": "Verify that '{domain}' exists in your Namecheap account"
+                "fix": "Verify that '{domain}' exists in your Namecheap account",
             },
             "2019166": {
                 "explanation": "Failed to retrieve DNS host records",
-                "fix": "Verify that '{domain}' exists in your Namecheap account"
+                "fix": "Verify that '{domain}' exists in your Namecheap account",
             },
             "UNKNOWN_ERROR": {
                 "explanation": "Failed to retrieve DNS host records",
-                "fix": "Verify that '{domain}' exists in your Namecheap account and is using Namecheap DNS servers"
-            }
+                "fix": "Verify that '{domain}' exists in your Namecheap account and is using Namecheap DNS servers",
+            },
         }
 
         # Set up context variables for error messages
         context = {"domain": domain}
 
         # Make request with centralized error handling
-        params = {
-            "SLD": sld,
-            "TLD": tld
-        }
+        params = {"SLD": sld, "TLD": tld}
 
         # Call the API with error handling integrated
         response = self.client._make_request(
             "namecheap.domains.dns.getHosts",
             params,
             error_codes=error_codes,
-            context=context
+            context=context,
         )
 
         # The ResponseList type is guaranteed by specifying return_type="list"
@@ -131,17 +129,19 @@ class DnsAPI:
         result = self.client.normalize_api_response(
             response=response,
             result_key="DomainDNSGetHostsResult.host",
-            return_type="list"
+            return_type="list",
         )
-        
+
         # Ensure we return the expected type
         if isinstance(result, list):
             return result
-        
+
         # If not a list, return an empty list
         return []
 
-    def set_hosts(self, domain_name: str, hosts: List[Dict[str, str]]) -> Dict[str, object]:
+    def set_hosts(
+        self, domain_name: str, hosts: List[Dict[str, str]]
+    ) -> Dict[str, object]:
         """
         Set DNS host records for a domain
 
@@ -177,7 +177,8 @@ class DnsAPI:
             # Required fields
             if "Address" not in host:
                 raise ValueError(
-                    f"Host record at index {i} is missing required 'Address' field")
+                    f"Host record at index {i} is missing required 'Address' field"
+                )
 
             # Check TTL range if provided
             if "TTL" in host:
@@ -185,15 +186,18 @@ class DnsAPI:
                     ttl = int(host["TTL"])
                     if ttl < 60 or ttl > 86400:
                         raise ValueError(
-                            f"Host record at index {i} has invalid TTL (must be between 60 and 86400)")
+                            f"Host record at index {i} has invalid TTL (must be between 60 and 86400)"
+                        )
                 except ValueError:
                     raise ValueError(
-                        f"Host record at index {i} has invalid TTL (must be an integer)")
+                        f"Host record at index {i} has invalid TTL (must be an integer)"
+                    )
 
             # MX record validation
             if host.get("Type", "").upper() == "MX" and "MXPref" not in host:
                 raise ValueError(
-                    f"MX record at index {i} is missing required 'MXPref' field")
+                    f"MX record at index {i} is missing required 'MXPref' field"
+                )
 
         # Error codes for setHosts method
         # https://www.namecheap.com/support/api/methods/domains-dns/set-hosts/
@@ -201,24 +205,24 @@ class DnsAPI:
             **COMMON_DNS_ERRORS,
             "2015280": {
                 "explanation": "Invalid record type",
-                "fix": "Check that all DNS record types are valid (A, AAAA, CNAME, MX, TXT, URL, URL301, FRAME)"
+                "fix": "Check that all DNS record types are valid (A, AAAA, CNAME, MX, TXT, URL, URL301, FRAME)",
             },
             "2015166": {
                 "explanation": "Failed to update domain",
-                "fix": "Verify the domain is registered and DNS settings can be modified"
+                "fix": "Verify the domain is registered and DNS settings can be modified",
             },
             "2016166": {
                 "explanation": "Domain is not using Namecheap DNS servers",
-                "fix": "Set the domain to use Namecheap's DNS servers before setting host records"
+                "fix": "Set the domain to use Namecheap's DNS servers before setting host records",
             },
             "4023330": {
                 "explanation": "Unable to process request",
-                "fix": "Check that the request is properly formatted and all required fields are included"
+                "fix": "Check that the request is properly formatted and all required fields are included",
             },
             "UNKNOWN_ERROR": {
                 "explanation": "Failed to set DNS host records",
-                "fix": "Verify that '{domain}' exists in your account and is using Namecheap DNS servers"
-            }
+                "fix": "Verify that '{domain}' exists in your account and is using Namecheap DNS servers",
+            },
         }
 
         # Use tldextract to split the domain
@@ -230,10 +234,7 @@ class DnsAPI:
         context = {"domain": domain_name}
 
         # Base parameters
-        params = {
-            "SLD": sld,
-            "TLD": tld
-        }
+        params = {"SLD": sld, "TLD": tld}
 
         # Convert normalized host records to Namecheap API format
         for i, host in enumerate(hosts):
@@ -257,20 +258,19 @@ class DnsAPI:
             "namecheap.domains.dns.setHosts",
             params,
             error_codes=error_codes,
-            context=context
+            context=context,
         )
 
         # Normalize the response - we're using return_type="dict" (default)
         # which guarantees a dictionary return type via overloaded signature
         result = self.client.normalize_api_response(
-            response=response,
-            result_key="DomainDNSSetHostsResult"
+            response=response, result_key="DomainDNSSetHostsResult"
         )
-        
+
         # Ensure we return the expected type
         if isinstance(result, dict):
             return result
-            
+
         # If not a dict, return empty dict
         return {}
 
@@ -306,16 +306,16 @@ class DnsAPI:
             **COMMON_DNS_ERRORS,
             "2016166": {
                 "explanation": "Domain not found or access denied",
-                "fix": "Verify the domain exists and is registered with your Namecheap account"
+                "fix": "Verify the domain exists and is registered with your Namecheap account",
             },
             "2015166": {
                 "explanation": "Failed to update domain",
-                "fix": "This may be a temporary issue or the domain may be locked"
+                "fix": "This may be a temporary issue or the domain may be locked",
             },
             "UNKNOWN_ERROR": {
                 "explanation": "Failed to set default DNS servers",
-                "fix": "Verify that '{domain_name}' exists in your Namecheap account"
-            }
+                "fix": "Verify that '{domain_name}' exists in your Namecheap account",
+            },
         }
 
         params = {"SLD": sld, "TLD": tld}
@@ -325,20 +325,19 @@ class DnsAPI:
             "namecheap.domains.dns.setDefault",
             params,
             error_codes,
-            {"domain_name": domain_name}
+            {"domain_name": domain_name},
         )
 
         # Normalize the response - we're using return_type="dict" (default)
         # which guarantees a dictionary return type via overloaded signature
         result = self.client.normalize_api_response(
-            response=response,
-            result_key="DomainDNSSetDefaultResult"
+            response=response, result_key="DomainDNSSetDefaultResult"
         )
-        
+
         # Ensure we return the expected type
         if isinstance(result, dict):
             return result
-            
+
         # If not a dict, return empty dict
         return {}
 
@@ -378,8 +377,7 @@ class DnsAPI:
         # Validate each nameserver format
         for i, ns in enumerate(nameservers):
             if not isinstance(ns, str) or not ns.strip():
-                raise ValueError(
-                    f"Nameserver at index {i} must be a non-empty string")
+                raise ValueError(f"Nameserver at index {i} must be a non-empty string")
 
             # Check for duplicate nameservers
             if nameservers.count(ns) > 1:
@@ -395,32 +393,32 @@ class DnsAPI:
             **COMMON_DNS_ERRORS,
             "2016166": {
                 "explanation": "Domain not found or access denied",
-                "fix": "Verify the domain exists and is registered with your Namecheap account"
+                "fix": "Verify the domain exists and is registered with your Namecheap account",
             },
             "2015166": {
                 "explanation": "Failed to update domain",
-                "fix": "This may be a temporary issue or the domain may be locked"
+                "fix": "This may be a temporary issue or the domain may be locked",
             },
             "2011146": {
                 "explanation": "Invalid nameserver format",
-                "fix": "Nameservers must be valid hostnames (e.g., ns1.example.com)"
+                "fix": "Nameservers must be valid hostnames (e.g., ns1.example.com)",
             },
             "2011147": {
                 "explanation": "Insufficient nameservers",
-                "fix": "At least 2 nameservers are required"
+                "fix": "At least 2 nameservers are required",
             },
             "2011148": {
                 "explanation": "Too many nameservers",
-                "fix": "Maximum of 12 nameservers allowed"
+                "fix": "Maximum of 12 nameservers allowed",
             },
             "2011149": {
                 "explanation": "Duplicate nameserver entries",
-                "fix": "Each nameserver must be unique"
+                "fix": "Each nameserver must be unique",
             },
             "UNKNOWN_ERROR": {
                 "explanation": "Failed to set custom DNS servers",
-                "fix": "Verify that '{domain_name}' exists in your Namecheap account"
-            }
+                "fix": "Verify that '{domain_name}' exists in your Namecheap account",
+            },
         }
 
         params = {"SLD": sld, "TLD": tld}
@@ -434,20 +432,19 @@ class DnsAPI:
             "namecheap.domains.dns.setCustom",
             params,
             error_codes,
-            {"domain_name": domain_name}
+            {"domain_name": domain_name},
         )
 
         # Normalize the response - we're using return_type="dict" (default)
         # which guarantees a dictionary return type via overloaded signature
         result = self.client.normalize_api_response(
-            response=response,
-            result_key="DomainDNSSetCustomResult"
+            response=response, result_key="DomainDNSSetCustomResult"
         )
-        
+
         # Ensure we return the expected type
         if isinstance(result, dict):
             return result
-            
+
         # If not a dict, return empty dict
         return {}
 
@@ -483,12 +480,12 @@ class DnsAPI:
             **COMMON_DNS_ERRORS,
             "2016166": {
                 "explanation": "Domain not found or access denied",
-                "fix": "Verify the domain exists and is registered with your Namecheap account"
+                "fix": "Verify the domain exists and is registered with your Namecheap account",
             },
             "UNKNOWN_ERROR": {
                 "explanation": "Failed to get DNS server list",
-                "fix": "Verify that '{domain_name}' exists in your Namecheap account"
-            }
+                "fix": "Verify that '{domain_name}' exists in your Namecheap account",
+            },
         }
 
         params = {"SLD": sld, "TLD": tld}
@@ -498,13 +495,12 @@ class DnsAPI:
             "namecheap.domains.dns.getList",
             params,
             error_codes,
-            {"domain_name": domain_name}
+            {"domain_name": domain_name},
         )
 
         # Normalize the main response
         result = self.client.normalize_api_response(
-            response=response,
-            result_key="DomainDNSGetListResult"
+            response=response, result_key="DomainDNSGetListResult"
         )
 
         # Extract nameservers (this is still needed as nameservers are in a special format)
@@ -516,15 +512,15 @@ class DnsAPI:
         # Ensure we're working with a dictionary
         if not isinstance(result, dict):
             result = {}
-            
+
         # Create a new dictionary with the correct type
         dns_result: Dict[str, object] = {}
-        
+
         # Copy values from result if it's a dictionary
         if isinstance(result, dict):
             for key, value in result.items():
                 dns_result[key] = value
-                
+
         # Add nameservers if not already present
         if "Nameservers" not in dns_result:
             dns_result["Nameservers"] = nameservers
@@ -545,7 +541,7 @@ class DnsAPI:
                 "forwards": [
                     {
                         "mailbox": "info",  # The part before the @ symbol
-                        "forward_to": "user@example.org" 
+                        "forward_to": "user@example.org"
                     },
                     ...
                 ]
@@ -568,16 +564,16 @@ class DnsAPI:
             **COMMON_DNS_ERRORS,
             "2016166": {
                 "explanation": "Domain not found or access denied",
-                "fix": "Verify the domain exists and is registered with your Namecheap account"
+                "fix": "Verify the domain exists and is registered with your Namecheap account",
             },
             "2011147": {
                 "explanation": "Email forwarding not enabled",
-                "fix": "Enable email forwarding for the domain first"
+                "fix": "Enable email forwarding for the domain first",
             },
             "UNKNOWN_ERROR": {
                 "explanation": "Failed to get email forwarding settings",
-                "fix": "Verify that '{domain_name}' exists in your Namecheap account"
-            }
+                "fix": "Verify that '{domain_name}' exists in your Namecheap account",
+            },
         }
 
         params = {"DomainName": sld, "TLD": tld}
@@ -587,18 +583,18 @@ class DnsAPI:
             "namecheap.domains.dns.getEmailForwarding",
             params,
             error_codes,
-            {"domain_name": domain_name}
+            {"domain_name": domain_name},
         )
 
         # Use normalized API response for consistency
         forwards_list: List[Dict[str, str]] = []
-        result: Dict[str, object] = {
-            "domain": domain_name,
-            "forwards": forwards_list
-        }
+        result: Dict[str, object] = {"domain": domain_name, "forwards": forwards_list}
 
         # Extract domain from result if available
-        if "DomainEmailForwarding" in response and "@Domain" in response["DomainEmailForwarding"]:
+        if (
+            "DomainEmailForwarding" in response
+            and "@Domain" in response["DomainEmailForwarding"]
+        ):
             result["domain"] = response["DomainEmailForwarding"]["@Domain"]
 
         # Process forwards using normalize_api_response for consistency
@@ -606,10 +602,7 @@ class DnsAPI:
             forwards_data = response["DomainEmailForwarding"]["Forward"]
 
             # Define field mapping for normalization
-            field_mapping = {
-                "@MailBox": "mailbox",
-                "@ForwardTo": "forward_to"
-            }
+            field_mapping = {"@MailBox": "mailbox", "@ForwardTo": "forward_to"}
 
             # Handle both single item and list
             if isinstance(forwards_data, list):
@@ -629,7 +622,9 @@ class DnsAPI:
 
         return result
 
-    def set_email_forwarding(self, domain_name: str, forwards: List[Dict[str, str]]) -> Dict[str, object]:
+    def set_email_forwarding(
+        self, domain_name: str, forwards: List[Dict[str, str]]
+    ) -> Dict[str, object]:
         """
         Set email forwarding for a domain
 
@@ -664,24 +659,35 @@ class DnsAPI:
 
             if "mailbox" not in forward:
                 raise ValueError(
-                    f"Forward at index {i} is missing required 'mailbox' field")
+                    f"Forward at index {i} is missing required 'mailbox' field"
+                )
 
             if "forward_to" not in forward:
                 raise ValueError(
-                    f"Forward at index {i} is missing required 'forward_to' field")
+                    f"Forward at index {i} is missing required 'forward_to' field"
+                )
 
-            if not isinstance(forward["mailbox"], str) or not forward["mailbox"].strip():
+            if (
+                not isinstance(forward["mailbox"], str)
+                or not forward["mailbox"].strip()
+            ):
                 raise ValueError(
-                    f"Forward at index {i} has invalid 'mailbox' (must be a non-empty string)")
+                    f"Forward at index {i} has invalid 'mailbox' (must be a non-empty string)"
+                )
 
-            if not isinstance(forward["forward_to"], str) or not forward["forward_to"].strip():
+            if (
+                not isinstance(forward["forward_to"], str)
+                or not forward["forward_to"].strip()
+            ):
                 raise ValueError(
-                    f"Forward at index {i} has invalid 'forward_to' (must be a non-empty string)")
+                    f"Forward at index {i} has invalid 'forward_to' (must be a non-empty string)"
+                )
 
             # Basic email validation for forward_to
             if "@" not in forward["forward_to"]:
                 raise ValueError(
-                    f"Forward at index {i} has invalid 'forward_to' email format")
+                    f"Forward at index {i} has invalid 'forward_to' email format"
+                )
 
         # Use tldextract to split the domain
         extracted = tldextract.extract(domain_name)
@@ -693,20 +699,20 @@ class DnsAPI:
             **COMMON_DNS_ERRORS,
             "2016166": {
                 "explanation": "Domain not found or access denied",
-                "fix": "Verify the domain exists and is registered with your Namecheap account"
+                "fix": "Verify the domain exists and is registered with your Namecheap account",
             },
             "2011147": {
                 "explanation": "Email forwarding not enabled",
-                "fix": "Enable email forwarding for the domain first"
+                "fix": "Enable email forwarding for the domain first",
             },
             "2011331": {
                 "explanation": "Invalid email format",
-                "fix": "Ensure all email addresses are in valid format"
+                "fix": "Ensure all email addresses are in valid format",
             },
             "UNKNOWN_ERROR": {
                 "explanation": "Failed to set email forwarding",
-                "fix": "Verify that '{domain_name}' exists in your Namecheap account"
-            }
+                "fix": "Verify that '{domain_name}' exists in your Namecheap account",
+            },
         }
 
         params = {"DomainName": sld, "TLD": tld}
@@ -722,19 +728,18 @@ class DnsAPI:
             "namecheap.domains.dns.setEmailForwarding",
             params,
             error_codes,
-            {"domain_name": domain_name}
+            {"domain_name": domain_name},
         )
 
         # Normalize the response - we're using return_type="dict" (default)
         # which guarantees a dictionary return type via overloaded signature
         result = self.client.normalize_api_response(
-            response=response,
-            result_key="DomainEmailForwardingResult"
+            response=response, result_key="DomainEmailForwardingResult"
         )
-        
+
         # Ensure we return the expected type
         if isinstance(result, dict):
             return result
-            
+
         # If not a dict, return empty dict
         return {}

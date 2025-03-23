@@ -3,11 +3,11 @@
 Utility to bump the package version using GitHub Actions workflow
 """
 
-import sys
 import subprocess
+import sys
 
 
-def main():
+def main() -> None:
     """Run the GitHub Actions workflow to bump the package version"""
     release_type = "patch"
     if len(sys.argv) > 1 and sys.argv[1] in ["patch", "minor", "major"]:

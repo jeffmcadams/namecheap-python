@@ -1,30 +1,31 @@
 """
 SSL API operations
 """
+
 from typing import Any, Dict, Optional
 
 # Common error codes shared across SSL certificate operations
 COMMON_SSL_ERRORS = {
     "1011102": {
         "explanation": "API Key is invalid or API access has not been enabled",
-        "fix": "Please verify your API key and ensure API access is enabled at https://ap.www.namecheap.com/settings/tools/apiaccess/"
+        "fix": "Please verify your API key and ensure API access is enabled at https://ap.www.namecheap.com/settings/tools/apiaccess/",
     },
     "1011125": {
         "explanation": "API command name is invalid",
-        "fix": "Check the API command name in your request"
+        "fix": "Check the API command name in your request",
     },
     "1016144": {
         "explanation": "API user authentication failed",
-        "fix": "Verify your API user credentials and ensure your client IP is whitelisted"
+        "fix": "Verify your API user credentials and ensure your client IP is whitelisted",
     },
     "3050900": {
         "explanation": "Unknown error from provider",
-        "fix": "Contact Namecheap support for assistance with this error"
+        "fix": "Contact Namecheap support for assistance with this error",
     },
     "UNKNOWN_ERROR": {
         "explanation": "An unknown error occurred",
-        "fix": "Please check your request parameters and try again. If the issue persists, contact Namecheap support."
-    }
+        "fix": "Please check your request parameters and try again. If the issue persists, contact Namecheap support.",
+    },
 }
 
 
@@ -40,9 +41,14 @@ class SslAPI:
         """
         self.client = client
 
-    def get_list(self, list_type: str = "", keyword: str = "",
-                 page: Optional[int] = None, page_size: Optional[int] = None,
-                 sort_by: str = "") -> Dict[str, Any]:
+    def get_list(
+        self,
+        list_type: str = "",
+        keyword: str = "",
+        page: Optional[int] = None,
+        page_size: Optional[int] = None,
+        sort_by: str = "",
+    ) -> Dict[str, Any]:
         """
         Get list of SSL certificates for the user
 
@@ -61,12 +67,12 @@ class SslAPI:
             **COMMON_SSL_ERRORS,
             "2015280": {
                 "explanation": "Invalid list type",
-                "fix": "Please use a valid list type such as 'All', 'Processing', etc."
+                "fix": "Please use a valid list type such as 'All', 'Processing', etc.",
             },
             "UNKNOWN_ERROR": {
                 "explanation": "Failed to retrieve SSL certificate list",
-                "fix": "Please check your request parameters and try again"
-            }
+                "fix": "Please check your request parameters and try again",
+            },
         }
 
         # Build parameters
@@ -84,9 +90,7 @@ class SslAPI:
 
         # Make API request
         response = self.client._make_request(
-            "namecheap.ssl.getList",
-            params,
-            error_codes=error_codes
+            "namecheap.ssl.getList", params, error_codes=error_codes
         )
 
         # Process pagination info
@@ -106,13 +110,12 @@ class SslAPI:
             response["Paging"] = new_paging
 
         # Return normalized response
-        result: Dict[str, Any] = self.client.normalize_api_response(
-            response=response
-        )
+        result: Dict[str, Any] = self.client.normalize_api_response(response=response)
         return result
 
-    def create(self, certificate_type: str, years: int,
-               promotion_code: str = "") -> Dict[str, Any]:
+    def create(
+        self, certificate_type: str, years: int, promotion_code: str = ""
+    ) -> Dict[str, Any]:
         """
         Create a new SSL certificate
 
@@ -135,41 +138,35 @@ class SslAPI:
             **COMMON_SSL_ERRORS,
             "2015280": {
                 "explanation": "Invalid certificate type",
-                "fix": "Please use a valid certificate type"
+                "fix": "Please use a valid certificate type",
             },
             "2030175": {
                 "explanation": "Failed to create certificate",
-                "fix": "Please check certificate type and other parameters"
+                "fix": "Please check certificate type and other parameters",
             },
             "3012230": {
                 "explanation": "Invalid promo code",
-                "fix": "Please provide a valid promotional code or leave it blank"
+                "fix": "Please provide a valid promotional code or leave it blank",
             },
             "UNKNOWN_ERROR": {
                 "explanation": "Failed to create SSL certificate",
-                "fix": "Please check your request parameters and try again"
-            }
+                "fix": "Please check your request parameters and try again",
+            },
         }
 
         # Build parameters
-        params = {
-            "Type": certificate_type,
-            "Years": years
-        }
+        params = {"Type": certificate_type, "Years": years}
         if promotion_code:
             params["PromotionCode"] = promotion_code
 
         # Make API request
         response = self.client._make_request(
-            "namecheap.ssl.create",
-            params,
-            error_codes=error_codes
+            "namecheap.ssl.create", params, error_codes=error_codes
         )
 
         # Return normalized response
         result: Dict[str, Any] = self.client.normalize_api_response(
-            response=response,
-            result_key="SSLCreateResult"
+            response=response, result_key="SSLCreateResult"
         )
         return result
 
@@ -192,30 +189,25 @@ class SslAPI:
             **COMMON_SSL_ERRORS,
             "2030166": {
                 "explanation": "Certificate not found",
-                "fix": "Please check the certificate ID"
+                "fix": "Please check the certificate ID",
             },
             "UNKNOWN_ERROR": {
                 "explanation": "Failed to retrieve SSL certificate info",
-                "fix": "Please check your request parameters and try again"
-            }
+                "fix": "Please check your request parameters and try again",
+            },
         }
 
         # Build parameters
-        params = {
-            "CertificateID": certificate_id
-        }
+        params = {"CertificateID": certificate_id}
 
         # Make API request
         response = self.client._make_request(
-            "namecheap.ssl.getInfo",
-            params,
-            error_codes=error_codes
+            "namecheap.ssl.getInfo", params, error_codes=error_codes
         )
 
         # Return normalized response
         result: Dict[str, Any] = self.client.normalize_api_response(
-            response=response,
-            result_key="SSLGetInfoResult"
+            response=response, result_key="SSLGetInfoResult"
         )
         return result
 
@@ -225,7 +217,7 @@ class SslAPI:
         csr: str,
         web_server_type: str,
         approver_email: str,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> Dict[str, Any]:
         """
         Activate an SSL certificate
@@ -257,24 +249,24 @@ class SslAPI:
             **COMMON_SSL_ERRORS,
             "2011330": {
                 "explanation": "Certificate already activated",
-                "fix": "This certificate has already been activated"
+                "fix": "This certificate has already been activated",
             },
             "2030166": {
                 "explanation": "Certificate not found",
-                "fix": "Please check the certificate ID"
+                "fix": "Please check the certificate ID",
             },
             "2030330": {
                 "explanation": "Invalid CSR format",
-                "fix": "Please provide a valid Certificate Signing Request"
+                "fix": "Please provide a valid Certificate Signing Request",
             },
             "2030331": {
                 "explanation": "Invalid approver email",
-                "fix": "Please provide a valid approver email address"
+                "fix": "Please provide a valid approver email address",
             },
             "UNKNOWN_ERROR": {
                 "explanation": "Failed to activate SSL certificate",
-                "fix": "Please check your request parameters and try again"
-            }
+                "fix": "Please check your request parameters and try again",
+            },
         }
 
         # Build parameters
@@ -282,7 +274,7 @@ class SslAPI:
             "CertificateID": certificate_id,
             "CSR": csr,
             "WebServerType": web_server_type,
-            "ApproverEmail": approver_email
+            "ApproverEmail": approver_email,
         }
 
         # Add any additional parameters
@@ -291,15 +283,12 @@ class SslAPI:
 
         # Make API request
         response = self.client._make_request(
-            "namecheap.ssl.activate",
-            params,
-            error_codes=error_codes
+            "namecheap.ssl.activate", params, error_codes=error_codes
         )
 
         # Return normalized response
         result: Dict[str, Any] = self.client.normalize_api_response(
-            response=response,
-            result_key="SSLActivateResult"
+            response=response, result_key="SSLActivateResult"
         )
         return result
 
@@ -322,33 +311,28 @@ class SslAPI:
             **COMMON_SSL_ERRORS,
             "2030166": {
                 "explanation": "Certificate not found",
-                "fix": "Please check the certificate ID"
+                "fix": "Please check the certificate ID",
             },
             "2011330": {
                 "explanation": "Invalid certificate status",
-                "fix": "This certificate may not be in a state where approver email can be resent"
+                "fix": "This certificate may not be in a state where approver email can be resent",
             },
             "UNKNOWN_ERROR": {
                 "explanation": "Failed to resend approver email",
-                "fix": "Please check your request parameters and try again"
-            }
+                "fix": "Please check your request parameters and try again",
+            },
         }
 
         # Build parameters
-        params = {
-            "CertificateID": certificate_id
-        }
+        params = {"CertificateID": certificate_id}
 
         # Make API request
         response = self.client._make_request(
-            "namecheap.ssl.resendApproverEmail",
-            params,
-            error_codes=error_codes
+            "namecheap.ssl.resendApproverEmail", params, error_codes=error_codes
         )
 
         # Return normalized response
         result: Dict[str, Any] = self.client.normalize_api_response(
-            response=response,
-            result_key="SSLResendApproverEmailResult"
+            response=response, result_key="SSLResendApproverEmailResult"
         )
         return result
