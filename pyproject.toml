@@ -43,6 +43,7 @@ mypy = ">=1.0.0"
 ruff = ">=0.0.263"
 pre-commit = ">=3.0.0"
 types-requests = ">=2.25.0"
+types-xmltodict = ">=0.13.0"
 
 [tool.black]
 line-length = 88
