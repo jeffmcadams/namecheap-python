@@ -1,7 +1,47 @@
 """
 Users API operations
 """
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TypedDict, Union
+
+
+# TypedDict definitions for user operations
+class ProductPrice(TypedDict, total=False):
+    """Product pricing information"""
+    ProductName: str
+    Price: float
+    RegisterPrice: float
+    RenewPrice: float
+    TransferPrice: float
+    RestorePrice: float
+    ReactivatePrice: float
+    Currency: str
+
+
+class PricingResult(TypedDict):
+    """Result of get_pricing operation"""
+    products: List[ProductPrice]
+    currency: str
+    product_type: str
+    category: Optional[str]
+    promotion_code: Optional[str]
+
+
+class AccountBalance(TypedDict):
+    """Account balance information"""
+    available_balance: float
+    earned_amount: float
+    pending_amount: float
+    account_balance: float
+    created_date: str
+    last_updated: str
+    currency: str
+
+
+class PasswordChangeResult(TypedDict):
+    """Result of password change operation"""
+    success: bool
+    message: str
+
 
 # Common error codes shared across user operations
 COMMON_USER_ERRORS = {
@@ -27,7 +67,7 @@ COMMON_USER_ERRORS = {
 class UsersAPI:
     """Users API methods"""
 
-    def __init__(self, client):
+    def __init__(self, client: Any) -> None:
         """
         Initialize the users API
 
@@ -43,7 +83,7 @@ class UsersAPI:
         promotion_code: Optional[str] = None,
         action_name: Optional[str] = None,
         product_name: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+    ) -> PricingResult:
         """
         Get pricing information for Namecheap products
 
@@ -116,14 +156,71 @@ class UsersAPI:
                 params["ProductName"] = product_name
 
         # Make the API call with centralized error handling
-        return self.client._make_request(
+        response = self.client._make_request(
             "namecheap.users.getPricing",
             params,
             error_codes,
             {"product_type": product_type}
         )
 
-    def get_balances(self) -> Dict[str, Any]:
+        # Parse the response into a properly typed result
+        product_list: List[ProductPrice] = []
+
+        # Extract products from the response
+        if "ProductType" in response and "ProductCategory" in response.get("ProductType", {}):
+            categories = response["ProductType"]["ProductCategory"]
+            if not isinstance(categories, list):
+                categories = [categories]
+
+            for category in categories:
+                if "Product" in category:
+                    products = category["Product"]
+                    if not isinstance(products, list):
+                        products = [products]
+
+                    for product in products:
+                        if isinstance(product, dict):
+                            product_price: ProductPrice = {
+                                "ProductName": product.get("Name", ""),
+                                "Currency": product.get("Currency", "USD")
+                            }
+
+                            # Add prices if available
+                            if "Price" in product:
+                                product_price["Price"] = float(
+                                    product["Price"])
+
+                            # Add specific price types if available
+                            if "RegisterPrice" in product:
+                                product_price["RegisterPrice"] = float(
+                                    product["RegisterPrice"])
+                            if "RenewPrice" in product:
+                                product_price["RenewPrice"] = float(
+                                    product["RenewPrice"])
+                            if "TransferPrice" in product:
+                                product_price["TransferPrice"] = float(
+                                    product["TransferPrice"])
+                            if "RestorePrice" in product:
+                                product_price["RestorePrice"] = float(
+                                    product["RestorePrice"])
+                            if "ReactivatePrice" in product:
+                                product_price["ReactivatePrice"] = float(
+                                    product["ReactivatePrice"])
+
+                            product_list.append(product_price)
+
+        # Create the typed result
+        result: PricingResult = {
+            "products": product_list,
+            "currency": response.get("Currency", "USD"),
+            "product_type": product_type,
+            "category": product_category,
+            "promotion_code": promotion_code
+        }
+
+        return result
+
+    def get_balances(self) -> AccountBalance:
         """
         Get account balances
 
@@ -152,14 +249,27 @@ class UsersAPI:
         }
 
         # Make the API call with centralized error handling
-        return self.client._make_request(
+        response = self.client._make_request(
             "namecheap.users.getBalances",
             {},
             error_codes,
             {}
         )
 
-    def change_password(self, old_password: str, new_password: str) -> Dict[str, Any]:
+        # Parse and create a typed result
+        result: AccountBalance = {
+            "available_balance": float(response.get("AvailableBalance", 0.0)),
+            "earned_amount": float(response.get("EarnedAmount", 0.0)),
+            "pending_amount": float(response.get("PendingAmount", 0.0)),
+            "account_balance": float(response.get("AccountBalance", 0.0)),
+            "created_date": response.get("CreatedDate", ""),
+            "last_updated": response.get("LastUpdated", ""),
+            "currency": response.get("Currency", "USD")
+        }
+
+        return result
+
+    def change_password(self, old_password: str, new_password: str) -> PasswordChangeResult:
         """
         Change account password
 
@@ -207,9 +317,17 @@ class UsersAPI:
         }
 
         # Make the API call with centralized error handling
-        return self.client._make_request(
+        response = self.client._make_request(
             "namecheap.users.changePassword",
             params,
             error_codes,
             {}
         )
+
+        # Create a properly typed result
+        result: PasswordChangeResult = {
+            "success": bool(response.get("IsSuccess", False)),
+            "message": response.get("Message", "Password changed successfully")
+        }
+
+        return result

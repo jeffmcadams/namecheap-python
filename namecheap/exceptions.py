@@ -2,7 +2,7 @@
 Exceptions for the Namecheap API client
 """
 
-from typing import Dict, Optional, Callable, Any, Union, List
+from typing import Any, Dict, Optional
 
 
 class NamecheapException(Exception):
@@ -22,7 +22,7 @@ class NamecheapException(Exception):
         self,
         code: str,
         message: str,
-        client,
+        client: Any,
         explanation: Optional[str] = None,
         fix: Optional[str] = None,
         raw_response: Optional[str] = None

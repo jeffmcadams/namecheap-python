@@ -1,19 +1,29 @@
 """
-Base client for Namecheap API
+Base client for interacting with the Namecheap API
 """
 
+import logging
+from datetime import datetime
 import xml.etree.ElementTree as ET
-import datetime
-from typing import Any, Dict, List, Optional, Tuple, Union, TypeVar, Callable, cast
+from typing import Dict, List, Literal, Mapping, MutableMapping, Optional, TypeVar, Union, overload
 
 import requests
 import xmltodict
-import logging
 
 from .exceptions import NamecheapException
 
-# Type for the generic response
-T = TypeVar('T', Dict[str, Any], List[Dict[str, Any]])
+# Types for response data
+JsonValue = Union[str, bool, int, float, None]
+
+# Types for API responses - preserve structural compatibility with TypedDict
+# Nested data structures to be used with normalize_api_response
+T = TypeVar('T')  # Generic type var for flexibility
+ResponseValue = Union[JsonValue, Dict[str, object], List[object]]
+# We use structural compatibility to avoid casting
+# A Dict[str, object] can be used where TypedDict is expected
+ResponseDict = Dict[str, object]  # Raw API response dictionary
+ResponseItem = Dict[str, object]  # Normalized dictionary item
+ResponseList = List[Dict[str, object]]  # List of normalized items
 
 
 class BaseClient:
@@ -133,28 +143,28 @@ class BaseClient:
         # Setup logging
         self._setup_logging()
 
-    def _setup_logging(self):
-        """Configure the Namecheap logger with appropriate settings"""
+    def _setup_logging(self) -> None:
+        """
+        Set up logging for the client
+        """
         # Get the logger for Namecheap
         self.logger = logging.getLogger("namecheap")
 
-        # Set log level based on debug flag - only show ERROR or higher in non-debug mode
-        self.logger.setLevel(logging.DEBUG if self.debug else logging.ERROR)
-
-        # Only configure handlers if none exist (avoid duplicate handlers)
-        if not self.logger.handlers and not self.logger.parent.handlers:
-            # Console handler
-            console = logging.StreamHandler()
-            console.setLevel(logging.DEBUG if self.debug else logging.ERROR)
-
-            # Create formatter
+        # Configure handler and formatter if not already set up
+        if self.logger and not self.logger.handlers:
+            # Create console handler with reasonable formatting
+            handler = logging.StreamHandler()
             formatter = logging.Formatter(
-                '%(asctime)s [%(name)s.%(where)s] %(levelname)s: %(message)s'
+                "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
             )
-            console.setFormatter(formatter)
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
 
-            # Add handlers to logger
-            self.logger.addHandler(console)
+        # Set the log level based on debug mode
+        if self.debug:
+            self.logger.setLevel(logging.DEBUG)
+        else:
+            self.logger.setLevel(logging.INFO)
 
     def _get_base_params(self) -> Dict[str, str]:
         """
@@ -163,20 +173,20 @@ class BaseClient:
         Returns:
             Dict containing the base authentication parameters
         """
-        # We know these are not None because we've checked in __init__
-        assert self.api_user is not None
-        assert self.api_key is not None
-        assert self.username is not None
-        assert self.client_ip is not None
+        # All credential checks are done in __init__, so we can safely use these values
+        api_user = self.api_user if self.api_user is not None else ""
+        api_key = self.api_key if self.api_key is not None else ""
+        username = self.username if self.username is not None else ""
+        client_ip = self.client_ip if self.client_ip is not None else ""
 
         return {
-            "ApiUser": self.api_user,
-            "ApiKey": self.api_key,
-            "UserName": self.username,
-            "ClientIp": self.client_ip,
+            "ApiUser": api_user,
+            "ApiKey": api_key,
+            "UserName": username,
+            "ClientIp": client_ip,
         }
 
-    def log(self, where: str, message: str, level: str = "DEBUG", data: Optional[Dict[str, Any]] = None) -> None:
+    def log(self, where: str, message: str, level: str = "DEBUG", data: Optional[Mapping[str, object]] = None) -> None:
         """
         Centralized logging method for all Namecheap API operations.
 
@@ -202,12 +212,12 @@ class BaseClient:
         # Format data for logging
         log_data = {}
         if data:
-            if isinstance(data, dict):
-                for key, value in sorted(data.items()):
-                    if key in ("ApiKey", "Password") and isinstance(value, str):
-                        log_data[key] = "******"
-                    else:
-                        log_data[key] = value
+            # data is already confirmed to be Mapping[str, object] by the type system
+            for key, value in sorted(data.items()):
+                # Check if key is sensitive and value is a string without using isinstance
+                is_sensitive = key in ("ApiKey", "Password")
+                should_mask = is_sensitive and hasattr(value, "strip")  # String-like check
+                log_data[key] = "******" if should_mask else value
 
         # Create the log entry with extra context
         extra = {"where": where}
@@ -217,84 +227,218 @@ class BaseClient:
         # Log with appropriate level
         self.logger.log(log_level, message, extra=extra)
 
+    @overload
     def normalize_api_response(
         self,
-        response: Dict[str, Any],
+        response: ResponseDict,
+        result_key: Optional[str] = None,
+        field_mapping: Optional[Dict[str, str]] = None,
+        boolean_fields: Optional[List[str]] = None,
+        datetime_fields: Optional[List[str]] = None,
+        return_type: Literal["dict"] = "dict"
+    ) -> ResponseDict: ...
+    
+    @overload
+    def normalize_api_response(
+        self,
+        response: ResponseDict,
+        result_key: Optional[str] = None,
+        field_mapping: Optional[Dict[str, str]] = None,
+        boolean_fields: Optional[List[str]] = None,
+        datetime_fields: Optional[List[str]] = None,
+        return_type: Literal["list"] = "list"
+    ) -> ResponseList: ...
+    
+    def normalize_api_response(
+        self,
+        response: ResponseDict,
         result_key: Optional[str] = None,
         field_mapping: Optional[Dict[str, str]] = None,
         boolean_fields: Optional[List[str]] = None,
         datetime_fields: Optional[List[str]] = None,
         return_type: str = "dict"
-    ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
+    ) -> Union[ResponseDict, ResponseList]:
         """
-        Generic API response normalizer that standardizes Namecheap API responses
+        Normalizes API responses to a consistent format.
 
         Args:
-            response: Raw API response dictionary
-            result_key: Key to extract from response (e.g., "DomainDNSGetHostsResult" or "DomainDNSGetHostsResult.host")
-                     Use dot notation to access nested keys
-            field_mapping: Optional mapping to rename fields {'HostId': 'id'} (default: None, keep original names)
-            boolean_fields: Optional list of additional fields to convert to boolean (default: None)
-                          Fields with 'Is' prefix or containing true/false values are automatically converted
-            datetime_fields: Optional list of fields to parse as datetime objects (default: None)
-            return_type: Type of return value: "dict" for a single object, "list" for a list of objects
+            response: The API response to normalize
+            result_key: Optional dot-notation key to extract from the response
+                        (e.g., "DomainGetListResult.Domain")
+            field_mapping: Dictionary mapping API field names to normalized names
+            boolean_fields: List of field names to convert to boolean
+            datetime_fields: List of field names to convert to datetime
+            return_type: Type of return value ("dict" or "list")
 
         Returns:
-            Normalized response with consistent field names and types as either a dict or list of dicts
+            Normalized API response as a dictionary or list of dictionaries
         """
-        if response is None:
-            if return_type == "list":
-                return []
-            return {}
-
-        # Extract data from nested structure if result_key is provided
-        data = response
-        if result_key:
-            for key in result_key.split('.'):
-                if key in data:
-                    data = data[key]
-                else:
-                    if return_type == "list":
-                        return []
-                    return {}
-
+        # Extract data from result_key if provided
+        extracted_data = self._extract_nested_data(response, result_key)
+        
         # Initialize defaults
         field_mapping = field_mapping or {}
         boolean_fields = boolean_fields or []
         datetime_fields = datetime_fields or []
 
-        # Handle single item vs list
+        # Process according to desired return type
         if return_type == "list":
-            # Ensure data is a list
-            if not isinstance(data, list):
-                data = [data] if data else []
-
-            normalized_items = []
+            return self._normalize_to_list(
+                extracted_data, 
+                field_mapping,
+                boolean_fields,
+                datetime_fields
+            )
+        else:  # return_type == "dict"
+            return self._normalize_to_dict(
+                extracted_data,
+                field_mapping,
+                boolean_fields,
+                datetime_fields
+            )
+            
+    def _extract_nested_data(
+        self, 
+        data: ResponseDict, 
+        path: Optional[str]
+    ) -> Union[ResponseDict, ResponseList, None]:
+        """
+        Safely extracts nested data from a dictionary using a dot-notation path.
+        
+        Args:
+            data: The dictionary to extract data from
+            path: Dot-notation path (e.g., "DomainGetListResult.Domain")
+            
+        Returns:
+            Extracted data or None if path not found
+        """
+        if not path:
+            return data
+            
+        current_data: Union[ResponseDict, ResponseList, None] = data
+        for key in path.split("."):
+            # Check if current_data is a dict and contains the key
+            if not isinstance(current_data, dict) or key not in current_data:
+                return None
+            
+            # Move to the next level
+            next_data = current_data[key]
+            # Ensure type safety
+            if not isinstance(next_data, (dict, list)) and next_data is not None:
+                current_data = {"value": next_data}
+            else:
+                current_data = next_data
+            
+            # If we get a non-container value, we can't traverse further
+            if not isinstance(current_data, dict) and not isinstance(current_data, list):
+                return None
+                
+        return current_data
+        
+    def _normalize_to_list(
+        self,
+        data: Union[ResponseDict, ResponseList, None],
+        field_mapping: Dict[str, str],
+        boolean_fields: List[str],
+        datetime_fields: List[str]
+    ) -> ResponseList:
+        """
+        Normalize data to a list of dictionaries.
+        
+        Args:
+            data: Data to normalize
+            field_mapping: Field name mapping
+            boolean_fields: Fields to convert to boolean
+            datetime_fields: Fields to convert to datetime
+            
+        Returns:
+            List of normalized dictionaries
+        """
+        # Handle None case
+        if data is None:
+            return []
+            
+        # Convert to list if it's a dictionary
+        items_to_process: List[ResponseDict] = []
+        
+        # Check if data has dict-like behavior
+        if isinstance(data, dict):
+            items_to_process = [data]
+        # Check if data has list-like behavior
+        elif isinstance(data, list):
+            # We know it's a list, but need to ensure it contains dicts
+            items_to_process = []
             for item in data:
+                if isinstance(item, dict):
+                    items_to_process.append(item)
+        # Default case: empty list
+        else:
+            return []
+            
+        # Process each item
+        result: ResponseList = []
+        for item in items_to_process:
+            if isinstance(item, dict):  # Dict-like
                 normalized = self._normalize_item(
                     item,
                     field_mapping,
                     boolean_fields,
                     datetime_fields
                 )
-                normalized_items.append(normalized)
-            return normalized_items
-        else:
-            # Single item normalization
+                result.append(normalized)
+            elif isinstance(item, str):  # String-like
+                result.append({"Value": item})
+            else:
+                # Log but skip items we can't process
+                self.log("API.NORMALIZE",
+                         f"Skipping item that cannot be normalized in list", "WARNING")
+        
+        return result
+        
+    def _normalize_to_dict(
+        self,
+        data: Union[ResponseDict, ResponseList, None],
+        field_mapping: Dict[str, str],
+        boolean_fields: List[str],
+        datetime_fields: List[str]
+    ) -> ResponseDict:
+        """
+        Normalize data to a single dictionary.
+        
+        Args:
+            data: Data to normalize
+            field_mapping: Field name mapping
+            boolean_fields: Fields to convert to boolean
+            datetime_fields: Fields to convert to datetime
+            
+        Returns:
+            Normalized dictionary
+        """
+        # Handle None case
+        if data is None:
+            return {}
+            
+        # If data has dict-like behavior, normalize it
+        if isinstance(data, dict):
             return self._normalize_item(
                 data,
                 field_mapping,
                 boolean_fields,
                 datetime_fields
             )
+            
+        # Otherwise, return empty dict
+        self.log("API.NORMALIZE",
+                 f"Cannot normalize non-dict data to dict type", "WARNING")
+        return {}
 
     def _normalize_item(
         self,
-        item: Dict[str, Any],
+        item: Dict[str, object],
         field_mapping: Dict[str, str],
         boolean_fields: List[str],
         datetime_fields: List[str]
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, object]:
         """
         Normalize a single item using the provided mappings and type conversions
 
@@ -307,62 +451,81 @@ class BaseClient:
         Returns:
             Normalized dictionary
         """
-        result = {}
+        # Create a dictionary to store normalized values
+        result: Dict[str, object] = {}
 
-        # Process all fields in the item
+        # Process each key-value pair
         for key, value in item.items():
-            # Remove @ prefix if present
-            clean_key = key[1:] if key.startswith('@') else key
+            # Map field name if provided
+            normalized_key = field_mapping.get(key, key)
 
-            # Apply mapping if provided
-            if key in field_mapping:
-                clean_key = field_mapping[key]
+            # Normalize the value based on its characteristics
+            normalized_value: object = self._normalize_value(value)
 
-            # Store the value with proper type conversion
-            result[clean_key] = value
+            # Convert boolean fields if the value has string characteristics
+            if normalized_key in boolean_fields and isinstance(normalized_value, str):
+                normalized_value = self._convert_to_boolean(normalized_value)
 
-        # Auto-detect and convert boolean fields
-        for key in result:
-            value = result[key]
-
-            # Convert fields with "Is" prefix to boolean
-            if key.startswith("Is") or key in boolean_fields:
-                if isinstance(value, str):
-                    result[key] = value.lower() in (
-                        'true', 'yes', 'enabled', '1')
-
-            # Convert fields with true/false values to boolean
-            elif isinstance(value, str) and value.lower() in ('true', 'false'):
-                result[key] = value.lower() == 'true'
-
-        # Convert datetime fields
-        for field in datetime_fields:
-            if field in result and isinstance(result[field], str):
+            # Convert datetime fields if the value has string characteristics
+            if normalized_key in datetime_fields and isinstance(normalized_value, str):
                 try:
-                    # Try different datetime formats
-                    for fmt in [
-                        '%Y-%m-%dT%H:%M:%S',
-                        '%Y-%m-%d %H:%M:%S',
-                        '%m/%d/%Y',
-                        '%Y-%m-%d'
-                    ]:
-                        try:
-                            result[field] = datetime.datetime.strptime(
-                                result[field], fmt)
-                            break
-                        except ValueError:
-                            continue
-                except Exception:
-                    # Keep as string if parsing fails
+                    normalized_value = datetime.strptime(normalized_value, "%m/%d/%Y")
+                except (ValueError, TypeError, AttributeError):
+                    # If we can't parse the date, keep the original value
                     pass
 
+            # Add to result
+            result[normalized_key] = normalized_value
+
         return result
+        
+    def _normalize_value(self, value: object) -> object:
+        """
+        Normalize a value based on its type characteristics
+        
+        Args:
+            value: The value to normalize
+            
+        Returns:
+            Normalized value suitable for API response
+        """
+        # Handle None case
+        if value is None:
+            return None
+            
+        # Check for simple types that can be returned as-is
+        # String-like: has strip method
+        if hasattr(value, "strip"):
+            return value
+            
+        # Number-like: has real attribute (float) or denominator (int)
+        if hasattr(value, "real") or hasattr(value, "denominator"):
+            return value
+            
+        # Boolean-like: value is exactly True or False
+        if value is True or value is False:
+            return value
+            
+        # For complex types, convert to string representation
+        return str(value)
+
+    def _convert_to_boolean(self, value: str) -> bool:
+        """
+        Convert a string value to boolean.
+
+        Args:
+            value: String value to convert
+
+        Returns:
+            Boolean value
+        """
+        return value.lower() in ('true', 'yes', 'enabled', '1', 'on')
 
     def _make_request(
-        self, command: str, params: Optional[Dict[str, Any]] = None,
-        error_codes: Optional[Dict[str, Dict[str, str]]] = None,
-        context: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, command: str, params: Optional[Mapping[str, object]] = None,
+        error_codes: Optional[Mapping[str, Dict[str, str]]] = None,
+        context: Optional[Mapping[str, object]] = None
+    ) -> ResponseDict:
         """
         Make a request to the Namecheap API with centralized error handling
 
@@ -384,7 +547,9 @@ class BaseClient:
         request_params["Command"] = command
 
         if params:
-            request_params.update(params)
+            # Convert all values to strings for the API
+            for key, value in params.items():
+                request_params[key] = str(value)
 
         # Create debug-safe params (hide sensitive info)
         debug_params = request_params.copy()
@@ -426,9 +591,9 @@ class BaseClient:
 
     def _parse_response(
         self, response: requests.Response,
-        error_codes: Optional[Dict[str, Dict[str, str]]] = None,
-        context: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        error_codes: Optional[Mapping[str, Dict[str, str]]] = None,
+        context: Optional[Mapping[str, object]] = None
+    ) -> ResponseDict:
         """
         Parse the API response and handle errors.
 
@@ -508,7 +673,8 @@ class BaseClient:
 
             # Return the command response section if successful
             command_response = api_response.get("CommandResponse", {})
-            return command_response
+            # Return it directly as a ResponseDict
+            return command_response if isinstance(command_response, dict) else {}
 
         except Exception as e:
             # If not a NamecheapException, wrap it
@@ -522,7 +688,7 @@ class BaseClient:
                 )
             raise
 
-    def _element_to_dict(self, element: ET.Element) -> Dict[str, Any]:
+    def _element_to_dict(self, element: ET.Element) -> Dict[str, object]:
         """
         Convert an XML element to a Python dictionary
 
@@ -532,7 +698,7 @@ class BaseClient:
         Returns:
             Dictionary representation of the XML element
         """
-        result: Dict[str, Any] = {}
+        result: Dict[str, object] = {}
 
         # Add element attributes
         for key, value in element.attrib.items():
@@ -555,10 +721,16 @@ class BaseClient:
 
             # Handle multiple elements with the same tag
             if tag in result:
-                if isinstance(result[tag], list):
-                    result[tag].append(child_data)
+                # Get the current value
+                current_value = result[tag]
+                
+                # Type check for list
+                if isinstance(current_value, list):
+                    # Safe to append since we've verified it's a list
+                    result[tag] = current_value + [child_data]
                 else:
-                    result[tag] = [result[tag], child_data]
+                    # Convert to list with both values
+                    result[tag] = [current_value, child_data]
             else:
                 result[tag] = child_data
 
@@ -566,7 +738,7 @@ class BaseClient:
         if element.text and element.text.strip() and len(result) == 0:
             text = element.text.strip()
             # Try to convert to appropriate types
-            element_value: Any
+            element_value: JsonValue
             if text.isdigit():
                 element_value = int(text)
             elif text.lower() in ("true", "yes", "enabled"):

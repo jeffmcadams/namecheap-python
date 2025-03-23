@@ -3,10 +3,17 @@ Utility functions to help set up and use the Namecheap API client
 """
 
 import os
-import datetime
 
 # Import client and exceptions only when needed to avoid circular imports
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, TypeVar, Callable, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    List,
+    Optional,
+    Type,
+    TypeVar,
+)
 
 import requests
 from dotenv import find_dotenv, load_dotenv
@@ -16,6 +23,7 @@ if TYPE_CHECKING:
 
 # Type for the generic response
 T = TypeVar('T', Dict[str, Any], List[Dict[str, Any]])
+K = TypeVar('K')  # Generic type for type conversion utilities
 
 
 def get_public_ip() -> Optional[str]:
@@ -275,10 +283,10 @@ def _test_domains_check(client: "NamecheapClient") -> bool:
         print("Testing domain availability check...")
         # Use domains that are very unlikely to be registered
         domains = ["example123456789.com", "randomdomain987654.org"]
-        result = client.domains_check(domains)
+        result = client.domains.check(domains)
 
         # Validate response format
-        domain_results = result.get("DomainCheckResult", [])
+        domain_results = result
         if not isinstance(domain_results, list):
             domain_results = [domain_results]
 
@@ -324,10 +332,10 @@ def _test_tld_list(client: "NamecheapClient") -> bool:
     """Test getting TLD list from API"""
     try:
         print("Getting available TLD list...")
-        result = client.domains_get_tld_list()
+        result = client.domains.get_tld_list()
 
         # Validate response format
-        tlds = result.get("Tlds", {}).get("Tld", [])
+        tlds = result.get("tlds", [])
         if not isinstance(tlds, list):
             tlds = [tlds]
 
@@ -367,3 +375,71 @@ def _test_tld_list(client: "NamecheapClient") -> bool:
             print(f"Error: {e}")
 
         return False
+
+
+# Type adapter utilities for proper type handling
+
+def adapt_dict(source: Dict[str, Any], target_type: Type[K], defaults: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """
+    Adapts a dictionary to match a TypedDict structure.
+    
+    Args:
+        source: Source dictionary with data
+        target_type: Target TypedDict class
+        defaults: Default values for missing fields
+        
+    Returns:
+        A dictionary with data from source matching the target type's structure
+    """
+    result = {}
+    
+    # Get annotations if available (for TypedDict)
+    annotations = getattr(target_type, "__annotations__", {})
+    
+    # Add values from the source dict that match the target type's fields
+    for field in annotations:
+        if field in source:
+            result[field] = source[field]
+        elif defaults and field in defaults:
+            result[field] = defaults[field]
+    
+    return result
+
+def ensure_list(value: Any) -> List[Any]:
+    """
+    Ensures a value is a list.
+    
+    Args:
+        value: The value to convert to a list if it's not already
+        
+    Returns:
+        value as a list, or [value] if it's not a list
+    """
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    return [value]
+
+def safe_get(dictionary: Dict[str, Any], *keys: str, default: Any = None) -> Any:
+    """
+    Safely get a nested value from a dictionary with a fallback default.
+    
+    Args:
+        dictionary: The dictionary to extract data from
+        *keys: One or more key names to navigate through the nested structure
+        default: The default value to return if any key is missing
+        
+    Returns:
+        The value at the specified path or the default value
+    """
+    if not dictionary or not isinstance(dictionary, dict):
+        return default
+        
+    current = dictionary
+    for key in keys:
+        if not isinstance(current, dict) or key not in current:
+            return default
+        current = current[key]
+    
+    return current

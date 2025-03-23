@@ -1,8 +1,83 @@
 """
 Base domain operations for the Namecheap API
 """
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, TypedDict, Union, cast
+
 import tldextract
+
+from ...base import BaseClient, ResponseDict, ResponseItem, ResponseList
+
+# Define proper types for the API responses
+
+
+class DomainCheckResult(TypedDict):
+    Domain: str
+    Available: bool
+    IsPremiumName: bool
+    PremiumRegistrationPrice: str
+    IcannFee: str
+
+
+class ContactInfo(TypedDict, total=False):
+    first_name: str
+    last_name: str
+    organization: str
+    job_title: str
+    address1: str
+    address2: str
+    city: str
+    state: str
+    state_choice: str
+    postal_code: str
+    country: str
+    phone: str
+    phone_ext: str
+    fax: str
+    email: str
+
+
+class PagingInfo(TypedDict):
+    total_items: int
+    total_pages: int
+    current_page: int
+    page_size: int
+
+
+class DomainInfo(TypedDict, total=False):
+    ID: str
+    Name: str
+    User: str
+    Created: str
+    Expires: str
+    IsExpired: bool
+    IsLocked: bool
+    AutoRenew: bool
+    WhoisGuard: str
+
+
+class DomainListResult(TypedDict):
+    domains: List[DomainInfo]
+    paging: PagingInfo
+
+
+class DomainContactsResult(TypedDict):
+    domain: str
+    registrant: ContactInfo
+    tech: ContactInfo
+    admin: ContactInfo
+    auxbilling: ContactInfo
+
+
+class TldInfo(TypedDict, total=False):
+    Name: str
+    MinRegisterYears: int
+    MaxRegisterYears: int
+    IsSupportsIDN: bool
+
+
+class TldListResult(TypedDict):
+    tlds: List[TldInfo]
+
 
 # Common error codes shared across domain operations
 COMMON_DOMAIN_ERRORS = {
@@ -28,7 +103,7 @@ COMMON_DOMAIN_ERRORS = {
 class DomainsBaseAPI:
     """Base API methods for domains namespace"""
 
-    def __init__(self, client):
+    def __init__(self, client: BaseClient) -> None:
         """
         Initialize the domains API
 
@@ -37,7 +112,7 @@ class DomainsBaseAPI:
         """
         self.client = client
 
-    def check(self, domains: List[str]) -> List[Dict[str, Any]]:
+    def check(self, domains: List[str]) -> List[Dict[str, object]]:
         """
         Check if domains are available for registration
 
@@ -92,20 +167,23 @@ class DomainsBaseAPI:
             error_codes=error_codes
         )
 
-        # Use the normalize_api_response method
-        return self.client.normalize_api_response(
+        # Use the normalize_api_response method to get results
+        results = self.client.normalize_api_response(
             response=response,
             result_key="DomainCheckResult",
             return_type="list"
         )
+        
+        # Results are now properly typed as ResponseList (List[Dict[str, object]])
+        return results
 
     def get_list(
         self,
         page: int = 1,
         page_size: int = 20,
         sort_by: str = "NAME",
-        filters: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        filters: Optional[Dict[str, str]] = None,
+    ) -> Dict[str, object]:
         """
         Get a list of domains in the user's account
 
@@ -165,8 +243,8 @@ class DomainsBaseAPI:
 
         # Base parameters
         params = {
-            "Page": page,
-            "PageSize": page_size,
+            "Page": str(page),
+            "PageSize": str(page_size),
             "SortBy": sort_by,
         }
 
@@ -183,28 +261,45 @@ class DomainsBaseAPI:
         )
 
         # Normalize the domains list
-        domains = self.client.normalize_api_response(
+        domains_raw = self.client.normalize_api_response(
             response=response,
             result_key="DomainGetListResult.Domain",
             datetime_fields=["Created", "Expires"],
             return_type="list"
         )
 
+        # No casting needed
+        domains = domains_raw
+
         # Get paging information
         paging_info = response.get("DomainGetListResult", {})
-        paging = {
-            "total_items": int(paging_info.get("@TotalItems", 0)),
-            "total_pages": int(paging_info.get("@TotalPages", 0)),
-            "current_page": int(paging_info.get("@CurrentPage", 0)),
-            "page_size": int(paging_info.get("@PageSize", 0))
+        
+        # Define helper function to parse integers safely
+        def parse_int(value: object) -> int:
+            if value is None:
+                return 0
+                
+            try:
+                return int(str(value))
+            except (ValueError, TypeError):
+                return 0
+        
+        # Build paging info with proper typing
+        paging: Dict[str, object] = {
+            "total_items": parse_int(paging_info.get("@TotalItems") if isinstance(paging_info, dict) else None),
+            "total_pages": parse_int(paging_info.get("@TotalPages") if isinstance(paging_info, dict) else None),
+            "current_page": parse_int(paging_info.get("@CurrentPage") if isinstance(paging_info, dict) else None),
+            "page_size": parse_int(paging_info.get("@PageSize") if isinstance(paging_info, dict) else None)
         }
 
-        return {
+        # Construct a compatible dictionary with explicit type annotation
+        result: Dict[str, object] = {
             "domains": domains,
             "paging": paging
         }
+        return result
 
-    def get_contacts(self, domain_name: str) -> Dict[str, Any]:
+    def get_contacts(self, domain_name: str) -> Dict[str, object]:
         """
         Get contact information for a domain
 
@@ -276,26 +371,176 @@ class DomainsBaseAPI:
             "EmailAddress": "email",
         }
 
-        result = {
-            "domain": domain_name
+        # Return a structurally compatible dictionary
+        result: Dict[str, object] = {
+            "domain": domain_name,
+            "registrant": {},
+            "tech": {},
+            "admin": {},
+            "auxbilling": {}
         }
 
         # Extract contact information for each type
-        if "DomainContactsResult" in response:
+        domain_contacts = response.get("DomainContactsResult", {})
+        if domain_contacts:
             for contact_type in contact_types:
-                contact_data = response["DomainContactsResult"].get(
-                    contact_type, {})
-                contact_info = {}
+                # Get contact data safely
+                contact_data: Dict[str, object] = {}
+                if isinstance(domain_contacts, dict) and contact_type in domain_contacts:
+                    contact_value = domain_contacts[contact_type]
+                    if isinstance(contact_value, dict):
+                        contact_data = contact_value
+                    else:
+                        contact_data = {}
 
+                # Create a new contact_info dictionary with only the fields defined in ContactInfo
+                temp_contact_info: Dict[str, str] = {}
                 for api_field, norm_field in contact_field_mapping.items():
-                    if api_field in contact_data:
-                        contact_info[norm_field] = contact_data[api_field]
+                    if isinstance(contact_data, dict) and api_field in contact_data:
+                        value = contact_data[api_field]
+                        if isinstance(value, str):
+                            temp_contact_info[norm_field] = value
+                        elif value is not None:
+                            temp_contact_info[norm_field] = str(value)
 
-                result[contact_type.lower()] = contact_info
+                # Set the contact info to the appropriate field based on the type
+                key = contact_type.lower()
+                if key == "registrant":
+                    registrant_info: ContactInfo = {}
+                    if "first_name" in temp_contact_info:
+                        registrant_info["first_name"] = temp_contact_info["first_name"]
+                    if "last_name" in temp_contact_info:
+                        registrant_info["last_name"] = temp_contact_info["last_name"]
+                    if "organization" in temp_contact_info:
+                        registrant_info["organization"] = temp_contact_info["organization"]
+                    if "job_title" in temp_contact_info:
+                        registrant_info["job_title"] = temp_contact_info["job_title"]
+                    if "address1" in temp_contact_info:
+                        registrant_info["address1"] = temp_contact_info["address1"]
+                    if "address2" in temp_contact_info:
+                        registrant_info["address2"] = temp_contact_info["address2"]
+                    if "city" in temp_contact_info:
+                        registrant_info["city"] = temp_contact_info["city"]
+                    if "state" in temp_contact_info:
+                        registrant_info["state"] = temp_contact_info["state"]
+                    if "state_choice" in temp_contact_info:
+                        registrant_info["state_choice"] = temp_contact_info["state_choice"]
+                    if "postal_code" in temp_contact_info:
+                        registrant_info["postal_code"] = temp_contact_info["postal_code"]
+                    if "country" in temp_contact_info:
+                        registrant_info["country"] = temp_contact_info["country"]
+                    if "phone" in temp_contact_info:
+                        registrant_info["phone"] = temp_contact_info["phone"]
+                    if "phone_ext" in temp_contact_info:
+                        registrant_info["phone_ext"] = temp_contact_info["phone_ext"]
+                    if "fax" in temp_contact_info:
+                        registrant_info["fax"] = temp_contact_info["fax"]
+                    if "email" in temp_contact_info:
+                        registrant_info["email"] = temp_contact_info["email"]
+                    result["registrant"] = registrant_info
+                elif key == "tech":
+                    tech_info: ContactInfo = {}
+                    if "first_name" in temp_contact_info:
+                        tech_info["first_name"] = temp_contact_info["first_name"]
+                    if "last_name" in temp_contact_info:
+                        tech_info["last_name"] = temp_contact_info["last_name"]
+                    if "organization" in temp_contact_info:
+                        tech_info["organization"] = temp_contact_info["organization"]
+                    if "job_title" in temp_contact_info:
+                        tech_info["job_title"] = temp_contact_info["job_title"]
+                    if "address1" in temp_contact_info:
+                        tech_info["address1"] = temp_contact_info["address1"]
+                    if "address2" in temp_contact_info:
+                        tech_info["address2"] = temp_contact_info["address2"]
+                    if "city" in temp_contact_info:
+                        tech_info["city"] = temp_contact_info["city"]
+                    if "state" in temp_contact_info:
+                        tech_info["state"] = temp_contact_info["state"]
+                    if "state_choice" in temp_contact_info:
+                        tech_info["state_choice"] = temp_contact_info["state_choice"]
+                    if "postal_code" in temp_contact_info:
+                        tech_info["postal_code"] = temp_contact_info["postal_code"]
+                    if "country" in temp_contact_info:
+                        tech_info["country"] = temp_contact_info["country"]
+                    if "phone" in temp_contact_info:
+                        tech_info["phone"] = temp_contact_info["phone"]
+                    if "phone_ext" in temp_contact_info:
+                        tech_info["phone_ext"] = temp_contact_info["phone_ext"]
+                    if "fax" in temp_contact_info:
+                        tech_info["fax"] = temp_contact_info["fax"]
+                    if "email" in temp_contact_info:
+                        tech_info["email"] = temp_contact_info["email"]
+                    result["tech"] = tech_info
+                elif key == "admin":
+                    admin_info: ContactInfo = {}
+                    if "first_name" in temp_contact_info:
+                        admin_info["first_name"] = temp_contact_info["first_name"]
+                    if "last_name" in temp_contact_info:
+                        admin_info["last_name"] = temp_contact_info["last_name"]
+                    if "organization" in temp_contact_info:
+                        admin_info["organization"] = temp_contact_info["organization"]
+                    if "job_title" in temp_contact_info:
+                        admin_info["job_title"] = temp_contact_info["job_title"]
+                    if "address1" in temp_contact_info:
+                        admin_info["address1"] = temp_contact_info["address1"]
+                    if "address2" in temp_contact_info:
+                        admin_info["address2"] = temp_contact_info["address2"]
+                    if "city" in temp_contact_info:
+                        admin_info["city"] = temp_contact_info["city"]
+                    if "state" in temp_contact_info:
+                        admin_info["state"] = temp_contact_info["state"]
+                    if "state_choice" in temp_contact_info:
+                        admin_info["state_choice"] = temp_contact_info["state_choice"]
+                    if "postal_code" in temp_contact_info:
+                        admin_info["postal_code"] = temp_contact_info["postal_code"]
+                    if "country" in temp_contact_info:
+                        admin_info["country"] = temp_contact_info["country"]
+                    if "phone" in temp_contact_info:
+                        admin_info["phone"] = temp_contact_info["phone"]
+                    if "phone_ext" in temp_contact_info:
+                        admin_info["phone_ext"] = temp_contact_info["phone_ext"]
+                    if "fax" in temp_contact_info:
+                        admin_info["fax"] = temp_contact_info["fax"]
+                    if "email" in temp_contact_info:
+                        admin_info["email"] = temp_contact_info["email"]
+                    result["admin"] = admin_info
+                elif key == "auxbilling":
+                    auxbilling_info: ContactInfo = {}
+                    if "first_name" in temp_contact_info:
+                        auxbilling_info["first_name"] = temp_contact_info["first_name"]
+                    if "last_name" in temp_contact_info:
+                        auxbilling_info["last_name"] = temp_contact_info["last_name"]
+                    if "organization" in temp_contact_info:
+                        auxbilling_info["organization"] = temp_contact_info["organization"]
+                    if "job_title" in temp_contact_info:
+                        auxbilling_info["job_title"] = temp_contact_info["job_title"]
+                    if "address1" in temp_contact_info:
+                        auxbilling_info["address1"] = temp_contact_info["address1"]
+                    if "address2" in temp_contact_info:
+                        auxbilling_info["address2"] = temp_contact_info["address2"]
+                    if "city" in temp_contact_info:
+                        auxbilling_info["city"] = temp_contact_info["city"]
+                    if "state" in temp_contact_info:
+                        auxbilling_info["state"] = temp_contact_info["state"]
+                    if "state_choice" in temp_contact_info:
+                        auxbilling_info["state_choice"] = temp_contact_info["state_choice"]
+                    if "postal_code" in temp_contact_info:
+                        auxbilling_info["postal_code"] = temp_contact_info["postal_code"]
+                    if "country" in temp_contact_info:
+                        auxbilling_info["country"] = temp_contact_info["country"]
+                    if "phone" in temp_contact_info:
+                        auxbilling_info["phone"] = temp_contact_info["phone"]
+                    if "phone_ext" in temp_contact_info:
+                        auxbilling_info["phone_ext"] = temp_contact_info["phone_ext"]
+                    if "fax" in temp_contact_info:
+                        auxbilling_info["fax"] = temp_contact_info["fax"]
+                    if "email" in temp_contact_info:
+                        auxbilling_info["email"] = temp_contact_info["email"]
+                    result["auxbilling"] = auxbilling_info
 
         return result
 
-    def get_info(self, domain_name: str) -> Dict[str, Any]:
+    def get_info(self, domain_name: str) -> Dict[str, object]:
         """
         Get information about a domain
 
@@ -334,14 +579,15 @@ class DomainsBaseAPI:
         params = {"DomainName": sld, "TLD": tld}
 
         # Make the API call with centralized error handling
-        return self.client._make_request(
+        response = self.client._make_request(
             "namecheap.domains.getInfo",
             params,
             error_codes,
             {"domain_name": domain_name}
         )
+        return response
 
-    def get_tld_list(self) -> Dict[str, Any]:
+    def get_tld_list(self) -> Dict[str, object]:
         """
         Get a list of available TLDs
 
@@ -379,19 +625,23 @@ class DomainsBaseAPI:
         )
 
         # Get TLDs from response
-        tlds = self.client.normalize_api_response(
+        tlds_raw = self.client.normalize_api_response(
             response=response,
             result_key="Tlds.Tld",
             return_type="list"
         )
 
-        return {
+        # No casting needed
+        tlds = tlds_raw
+
+        result: Dict[str, object] = {
             "tlds": tlds
         }
+        return result
 
     def renew(
         self, domain_name: str, years: int = 1, promotion_code: Optional[str] = None
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, object]:
         """
         Renew a domain
 
@@ -436,15 +686,16 @@ class DomainsBaseAPI:
 
         extract = tldextract.extract(domain_name)
         sld, tld = extract.domain, extract.suffix
-        params = {"DomainName": sld, "TLD": tld, "Years": years}
+        params = {"DomainName": sld, "TLD": tld, "Years": str(years)}
 
         if promotion_code:
             params["PromotionCode"] = promotion_code
 
         # Make the API call with centralized error handling
-        return self.client._make_request(
+        response = self.client._make_request(
             "namecheap.domains.renew",
             params,
             error_codes,
             {"domain_name": domain_name}
         )
+        return response

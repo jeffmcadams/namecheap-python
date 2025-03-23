@@ -1,8 +1,34 @@
 """
 Enhanced domain operations
 """
-from typing import Any, Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, TYPE_CHECKING, TypedDict, Union
+
 import tldextract
+
+from ..base import JsonValue, ResponseDict, ResponseItem, ResponseList
+
+# Import needed for type hints
+if TYPE_CHECKING:
+    from ..client import NamecheapClient
+
+
+class DomainCheckInfo(TypedDict, total=False):
+    """Type for domain check information"""
+    Domain: str
+    Available: bool
+    IsPremiumName: bool
+    Price: float
+    PremiumRegistrationPrice: str
+
+
+class DomainCheckResult(TypedDict):
+    """Type for domain check result"""
+    DomainCheckResult: List[DomainCheckInfo]
+
+
+class AvailableDomainsResult(TypedDict):
+    """Type for available domains result"""
+    AvailableDomains: List[DomainCheckInfo]
 
 
 class EnhancedDomainsAPI:
@@ -10,7 +36,7 @@ class EnhancedDomainsAPI:
     Enhanced domain operations that combine multiple API calls
     """
 
-    def __init__(self, client):
+    def __init__(self, client: "NamecheapClient") -> None:
         """
         Initialize enhanced domain operations
 
@@ -19,7 +45,7 @@ class EnhancedDomainsAPI:
         """
         self.client = client
 
-    def check_with_pricing(self, domains: List[str]) -> Dict[str, Any]:
+    def check_with_pricing(self, domains: List[str]) -> DomainCheckResult:
         """
         Check domain availability with comprehensive pricing information
 
@@ -35,35 +61,47 @@ class EnhancedDomainsAPI:
         Raises:
             NamecheapException: If the API returns an error
         """
+        # Import utility functions
+        from ..utils import ensure_list
+        
         # Get basic availability info
         domain_results = self.client.domains.check(domains)
+        
+        # Ensure domain_results is a list
+        domain_results_list = ensure_list(domain_results)
 
         # Extract unique TLDs from available domains
         tlds = set()
         available_domains = []
 
-        for domain_info in domain_results:
+        for domain_info in domain_results_list:
             if isinstance(domain_info, dict) and domain_info.get("Available", False):
                 domain = domain_info.get("Domain", "")
-                available_domains.append(domain)
-                extract = tldextract.extract(domain)
-                tld = f".{extract.suffix}"
-                tlds.add(tld)
+                if isinstance(domain, str) and domain:
+                    available_domains.append(domain)
+                    extract = tldextract.extract(domain)
+                    tld = f".{extract.suffix}"
+                    tlds.add(tld)
 
         # Get pricing info for TLDs of available domains
         pricing_info = self._get_tld_pricing(tlds)
 
         # Build the final result
-        result = {"DomainCheckResult": []}
-        for domain_info in domain_results:
+        domain_check_results: List[DomainCheckInfo] = []
+        result: DomainCheckResult = {"DomainCheckResult": domain_check_results}
+        
+        for domain_info in domain_results_list:
             if not isinstance(domain_info, dict):
                 continue
 
             domain = domain_info.get("Domain", "")
+            if not isinstance(domain, str):
+                continue
+                
             is_available = domain_info.get("Available", False)
             is_premium = domain_info.get("IsPremiumName", False)
 
-            enhanced_info = {
+            enhanced_info: DomainCheckInfo = {
                 "Domain": domain,
                 "Available": is_available,
                 "IsPremiumName": is_premium,
@@ -76,7 +114,7 @@ class EnhancedDomainsAPI:
                     domain, domain_info, pricing_info
                 )
 
-            result["DomainCheckResult"].append(enhanced_info)
+            domain_check_results.append(enhanced_info)
 
         return result
 
@@ -99,12 +137,18 @@ class EnhancedDomainsAPI:
                 price_response = self.client.users.get_pricing(
                     product_type="DOMAIN",
                     action_name="REGISTER",
-                    product_name=tld_name,
+                    product_name=[tld_name],  # Wrap in a list as required by the API
                     product_category="REGISTER"
                 )
 
-                price = self._extract_price_from_response(
-                    price_response, tld_name)
+                # Convert from nested type to Dict[str, object]
+                price_dict: Dict[str, object] = {}
+                if isinstance(price_response, dict):
+                    # Use a copy to avoid type issues
+                    for key, value in price_response.items():
+                        price_dict[key] = value
+                # Then extract price
+                price = self._extract_price_from_response(price_dict, tld_name)
                 if price > 0:
                     pricing_info[tld] = price
                     self.client.log(
@@ -122,7 +166,7 @@ class EnhancedDomainsAPI:
 
         return pricing_info
 
-    def _extract_price_from_response(self, response: Dict[str, Any], tld_name: str) -> float:
+    def _extract_price_from_response(self, response: Dict[str, object], tld_name: str) -> float:
         """
         Extract 1-year registration price from pricing API response
 
@@ -133,10 +177,13 @@ class EnhancedDomainsAPI:
         Returns:
             Price as float, or 0.0 if not found
         """
-        if "UserGetPricingResult" not in response:
+        # Import utility functions
+        from ..utils import ensure_list
+        
+        # Get the pricing result safely
+        result = response.get("UserGetPricingResult")
+        if not result:
             return 0.0
-
-        result = response["UserGetPricingResult"]
 
         # Log the raw result for debugging
         self.client.log(
@@ -145,56 +192,72 @@ class EnhancedDomainsAPI:
             "DEBUG"
         )
 
-        if "ProductType" not in result:
+        # Safely check for ProductType
+        if not isinstance(result, dict):
+            return 0.0
+            
+        product_type = result.get("ProductType")
+        if not product_type or not isinstance(product_type, dict):
+            return 0.0
+            
+        # Check for ProductCategory
+        product_category = product_type.get("ProductCategory")
+        if not product_category:
             return 0.0
 
-        product_type = result["ProductType"]
-        if not isinstance(product_type, dict) or "ProductCategory" not in product_type:
-            return 0.0
-
-        # Get the REGISTER product category
-        product_category = product_type["ProductCategory"]
+        # Find register category
         register_category = None
-
+        
         if isinstance(product_category, list):
+            # It's a list, search for the REGISTER category
             for category in product_category:
                 if isinstance(category, dict) and category.get("@Name", "").upper() == "REGISTER":
                     register_category = category
                     break
         elif isinstance(product_category, dict) and product_category.get("@Name", "").upper() == "REGISTER":
+            # It's already the REGISTER category
             register_category = product_category
 
-        if not register_category or "Product" not in register_category:
+        if not register_category:
             return 0.0
-
+            
+        # Get the Product safely
+        product = register_category.get("Product")
+        if not product:
+            return 0.0
+            
         # Find the product for our TLD
-        product = register_category["Product"]
         tld_product = None
+        product_list = ensure_list(product)
+        
+        for prod in product_list:
+            if isinstance(prod, dict) and prod.get("@Name", "").lower() == tld_name.lower():
+                tld_product = prod
+                break
 
-        if isinstance(product, list):
-            for prod in product:
-                if isinstance(prod, dict) and prod.get("@Name", "").lower() == tld_name.lower():
-                    tld_product = prod
-                    break
-        elif isinstance(product, dict) and product.get("@Name", "").lower() == tld_name.lower():
-            tld_product = product
-
-        if not tld_product or "Price" not in tld_product:
+        if not tld_product:
             return 0.0
+            
+        # Get prices safely
+        prices = tld_product.get("Price")
+        if not prices:
+            return 0.0
+            
+        # Ensure prices is a list
+        price_list = ensure_list(prices)
 
-        # Get the 1-year price
-        prices = tld_product["Price"]
-        if not isinstance(prices, list):
-            prices = [prices]
-
-        for price_data in prices:
+        for price_data in price_list:
+            if not isinstance(price_data, dict):
+                continue
+                
+            # Check for 1-year duration
             if (price_data.get("@Duration") == "1" and
                     price_data.get("@DurationType", "").upper() == "YEAR"):
                 try:
                     # Find price attribute regardless of capitalization
                     price_value_attr = None
                     for attr in price_data:
-                        if attr.lstrip('@').lower() == "price":
+                        if isinstance(attr, str) and attr.lstrip('@').lower() == "price":
                             price_value_attr = attr
                             break
 
@@ -205,7 +268,7 @@ class EnhancedDomainsAPI:
 
         return 0.0
 
-    def _determine_domain_price(self, domain: str, domain_info: Dict[str, Any],
+    def _determine_domain_price(self, domain: str, domain_info: Dict[str, Union[str, bool, float]],
                                 pricing_info: Dict[str, float]) -> float:
         """
         Determine the price for a domain
@@ -256,7 +319,7 @@ class EnhancedDomainsAPI:
         keyword: str,
         tlds: Optional[List[str]] = None,
         include_premium: bool = False
-    ) -> Dict[str, Any]:
+    ) -> AvailableDomainsResult:
         """
         Search for available domains based on a keyword
 
@@ -281,10 +344,84 @@ class EnhancedDomainsAPI:
         results = self.check_with_pricing(domains_to_check)
 
         # Filter available domains
-        available_domains = []
+        available_domains: List[DomainCheckInfo] = []
         for domain in results.get("DomainCheckResult", []):
             if domain.get("Available", False):
                 if not domain.get("IsPremiumName", False) or include_premium:
                     available_domains.append(domain)
 
         return {"AvailableDomains": available_domains}
+
+    def bulk_check(self, keywords: List[str], tlds: List[str]) -> Dict[str, bool]:
+        """
+        Check availability for multiple domain combinations
+
+        Args:
+            keywords: List of keywords/names to check
+            tlds: List of TLDs to check for each keyword
+
+        Returns:
+            Dictionary mapping domain names to their availability status
+            (e.g., {"example.com": True, "example.net": False})
+
+        Raises:
+            ValueError: If too many domains would be checked at once
+            NamecheapException: If the API returns an error
+        """
+        # Validate inputs
+        if not keywords or not isinstance(keywords, list):
+            raise ValueError("Keywords must be a non-empty list")
+        if not tlds or not isinstance(tlds, list):
+            raise ValueError("TLDs must be a non-empty list")
+
+        # Calculate total number of domains to check
+        total_domains = len(keywords) * len(tlds)
+        if total_domains > 50:
+            raise ValueError(
+                f"Maximum of 50 domains can be checked at once, but you're trying to check {total_domains} domains")
+
+        # Generate all domain combinations
+        domains = []
+        for keyword in keywords:
+            for tld in tlds:
+                # Handle if the TLD already includes a dot or not
+                if isinstance(tld, str) and tld.startswith("."):
+                    domains.append(f"{keyword}{tld}")
+                else:
+                    domains.append(f"{keyword}.{tld}")
+
+        # Use the API to check availability
+        result: Dict[str, bool] = {}
+        api_result = self.client.domains.check(domains)
+
+        # Use our client's normalize_api_response to get a properly typed result
+        domain_check_results: List[Dict[str, object]] = []
+        if isinstance(api_result, dict):
+            domain_check_results = self.client.normalize_api_response(
+                api_result,
+                result_key="DomainCheckResult",
+                return_type="list"
+            )
+
+        # Process the results into a simpler format
+        for domain_data in domain_check_results:
+            if not isinstance(domain_data, dict):
+                continue
+                
+            domain = domain_data.get("Domain", "")
+            if not isinstance(domain, str):
+                continue
+                
+            available = domain_data.get("Available", False)
+            
+            # Convert to boolean regardless of original type
+            if isinstance(available, bool):
+                is_available = available
+            elif isinstance(available, str):
+                is_available = available.lower() in ("true", "yes", "1")
+            else:
+                is_available = bool(available)
+                
+            result[domain] = is_available
+
+        return result

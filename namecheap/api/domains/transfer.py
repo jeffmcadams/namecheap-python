@@ -1,8 +1,9 @@
 """
 Domain transfer operations for domains API
 """
-from typing import Any, Dict, List, Optional
-import tldextract
+from typing import Dict, Optional
+
+from ...base import BaseClient, ResponseDict
 
 # Common error codes shared across transfer operations
 COMMON_TRANSFER_ERRORS = {
@@ -24,7 +25,7 @@ COMMON_TRANSFER_ERRORS = {
 class TransferAPI:
     """Transfer API methods for domains namespace"""
 
-    def __init__(self, client):
+    def __init__(self, client: BaseClient) -> None:
         """
         Initialize the transfer API
 
@@ -39,8 +40,8 @@ class TransferAPI:
         years: int = 1,
         epp_code: Optional[str] = None,
         promotion_code: Optional[str] = None,
-        **kwargs: Any
-    ) -> Dict[str, Any]:
+        **kwargs: str
+    ) -> ResponseDict:
         """
         Transfers a domain to Namecheap
 
@@ -90,8 +91,8 @@ class TransferAPI:
             }
         }
 
-        extract = tldextract.extract(domain_name)
-        sld, tld = extract.domain, extract.suffix
+        # Removed unused extract variable
+        # extract = tldextract.extract(domain_name)
 
         params = {
             "DomainName": domain_name,
@@ -115,7 +116,7 @@ class TransferAPI:
             {"domain_name": domain_name}
         )
 
-    def get_status(self, transfer_id: int) -> Dict[str, Any]:
+    def get_status(self, transfer_id: int) -> ResponseDict:
         """
         Gets the status of a domain transfer
 
@@ -157,7 +158,7 @@ class TransferAPI:
             {"transfer_id": transfer_id}
         )
 
-    def update_status(self, transfer_id: int, resubmit: bool = False) -> Dict[str, Any]:
+    def update_status(self, transfer_id: int, resubmit: bool = False) -> ResponseDict:
         """
         Updates the status of a domain transfer
 
@@ -209,7 +210,7 @@ class TransferAPI:
         page_size: int = 20,
         sort_by: str = "TRANSFERDATE",
         list_type: str = "ALL"
-    ) -> Dict[str, Any]:
+    ) -> ResponseDict:
         """
         Gets the list of domain transfers
 

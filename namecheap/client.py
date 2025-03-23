@@ -4,20 +4,25 @@ Namecheap API Python client
 A Python wrapper for interacting with the Namecheap API.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Union
 
-from .base import BaseClient
 from .api.domains import DomainsAPI
-from .api.users import UsersAPI
 from .api.ssl import SslAPI
-from .enhanced.domains import EnhancedDomainsAPI
+from .api.users import UsersAPI
+from .base import BaseClient, ResponseDict, ResponseItem, ResponseList
 from .enhanced.dns import EnhancedDnsAPI
+from .enhanced.domains import EnhancedDomainsAPI
+
+
+# Removed protocol imports that are no longer used
+
+"""Client class definition removed as we're using direct imports and concrete types instead of Protocol"""
 
 
 class EnhancedNamespace:
     """Namespace for enhanced functionality"""
 
-    def __init__(self, client):
+    def __init__(self, client: "NamecheapClient") -> None:
         """
         Initialize the enhanced namespace
 
@@ -40,34 +45,26 @@ class NamecheapClient(BaseClient):
 
     def __init__(
         self,
-        api_user: Optional[str] = None,
-        api_key: Optional[str] = None,
-        username: Optional[str] = None,
-        client_ip: Optional[str] = None,
-        sandbox: Optional[bool] = None,
-        debug: bool = False,
-        load_env: bool = True,
-    ):
+        api_user: str,
+        api_key: str,
+        username: str,
+        client_ip: str,
+        sandbox: bool = True,
+        debug: bool = False
+    ) -> None:
         """
         Initialize the Namecheap API client
 
         Args:
-            api_user: Your Namecheap username for API access
-            api_key: Your API key generated from Namecheap account
-            username: Your Namecheap username (typically the same as api_user)
-            client_ip: The whitelisted IP address making the request
-            sandbox: Whether to use the sandbox environment (default: read from env or True)
-            debug: Whether to enable debug logging (default: False)
-            load_env: Whether to load credentials from environment variables (default: True)
+            api_user: Namecheap API username
+            api_key: Namecheap API key
+            username: Namecheap account username
+            client_ip: Client IP address
+            sandbox: Whether to use the sandbox environment
+            debug: Whether to enable debug mode
         """
         super().__init__(
-            api_user=api_user,
-            api_key=api_key,
-            username=username,
-            client_ip=client_ip,
-            sandbox=sandbox,
-            debug=debug,
-            load_env=load_env,
+            api_user, api_key, username, client_ip, sandbox, debug
         )
 
         # Initialize API namespaces
@@ -75,5 +72,5 @@ class NamecheapClient(BaseClient):
         self.users = UsersAPI(self)
         self.ssl = SslAPI(self)
 
-        # Initialize enhanced functionality
+        # Initialize enhanced API functionality
         self.enhanced = EnhancedNamespace(self)

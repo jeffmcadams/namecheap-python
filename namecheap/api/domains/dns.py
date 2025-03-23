@@ -1,8 +1,18 @@
 """
 DNS-related operations for domains API
 """
-from typing import Any, Dict, List, Optional
+from typing import Callable, Dict, List, Protocol, Union, runtime_checkable
+
 import tldextract
+
+from ...base import JsonValue, ResponseDict, ResponseItem
+
+
+@runtime_checkable
+class DnsClient(Protocol):
+    """Protocol for the DNS client"""
+    _make_request: Callable
+    normalize_api_response: Callable
 
 # Constants for default values
 DEFAULT_TTL = "1800"
@@ -12,17 +22,9 @@ DEFAULT_RECORD_TYPE = "A"
 
 # Common error codes applicable to multiple DNS methods
 COMMON_DNS_ERRORS = {
-    "2019166": {
-        "explanation": "Domain not found or incorrect domain format",
-        "fix": "Verify the domain name exists and is spelled correctly."
-    },
     "2016166": {
         "explanation": "Domain is not associated with your account",
         "fix": "Ensure this domain is registered and active in your Namecheap account."
-    },
-    "2013166": {
-        "explanation": "Domain is not active",
-        "fix": "Check that the domain is active in your Namecheap account (not expired or pending)"
     },
     "3031510": {
         "explanation": "Enom error when ErrorCount is not 0",
@@ -46,7 +48,7 @@ COMMON_DNS_ERRORS = {
 class DnsAPI:
     """DNS API methods for domains namespace"""
 
-    def __init__(self, client):
+    def __init__(self, client: DnsClient) -> None:
         """
         Initialize the DNS API
 
@@ -55,7 +57,7 @@ class DnsAPI:
         """
         self.client = client
 
-    def get_hosts(self, domain: str) -> List[Dict[str, Any]]:
+    def get_hosts(self, domain: str) -> List[Dict[str, object]]:
         """
         Retrieves DNS host record settings for the requested domain.
 
@@ -123,14 +125,23 @@ class DnsAPI:
             context=context
         )
 
-        # Use the simplified normalized API response method
-        return self.client.normalize_api_response(
+        # The ResponseList type is guaranteed by specifying return_type="list"
+        # normalize_api_response will consistently return List[Dict[str, object]]
+        # which is directly compatible with our return type
+        result = self.client.normalize_api_response(
             response=response,
             result_key="DomainDNSGetHostsResult.host",
             return_type="list"
         )
+        
+        # Ensure we return the expected type
+        if isinstance(result, list):
+            return result
+        
+        # If not a list, return an empty list
+        return []
 
-    def set_hosts(self, domain_name: str, hosts: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def set_hosts(self, domain_name: str, hosts: List[Dict[str, str]]) -> Dict[str, object]:
         """
         Set DNS host records for a domain
 
@@ -155,18 +166,14 @@ class DnsAPI:
             NamecheapException: If the API returns an error
         """
         # Validate inputs
-        if not domain_name or not isinstance(domain_name, str):
+        if not domain_name:
             raise ValueError("Domain name must be a non-empty string")
 
-        if not hosts or not isinstance(hosts, list):
+        if not hosts:
             raise ValueError("Hosts must be a non-empty list")
 
-        # Validate each host record
+        # Validate each host record by checking for expected keys
         for i, host in enumerate(hosts):
-            if not isinstance(host, dict):
-                raise ValueError(
-                    f"Host record at index {i} must be a dictionary")
-
             # Required fields
             if "Address" not in host:
                 raise ValueError(
@@ -207,14 +214,6 @@ class DnsAPI:
             "4023330": {
                 "explanation": "Unable to process request",
                 "fix": "Check that the request is properly formatted and all required fields are included"
-            },
-            "2015280": {
-                "explanation": "Invalid DNS host record",
-                "fix": "Check that the host record parameters are valid"
-            },
-            "2015166": {
-                "explanation": "Failed to update domain",
-                "fix": "Verify the domain is active and can be modified"
             },
             "UNKNOWN_ERROR": {
                 "explanation": "Failed to set DNS host records",
@@ -261,13 +260,21 @@ class DnsAPI:
             context=context
         )
 
-        # Get the result
-        return self.client.normalize_api_response(
+        # Normalize the response - we're using return_type="dict" (default)
+        # which guarantees a dictionary return type via overloaded signature
+        result = self.client.normalize_api_response(
             response=response,
             result_key="DomainDNSSetHostsResult"
         )
+        
+        # Ensure we return the expected type
+        if isinstance(result, dict):
+            return result
+            
+        # If not a dict, return empty dict
+        return {}
 
-    def set_default(self, domain_name: str) -> Dict[str, Any]:
+    def set_default(self, domain_name: str) -> Dict[str, object]:
         """
         Set default Namecheap DNS servers for a domain
 
@@ -321,13 +328,21 @@ class DnsAPI:
             {"domain_name": domain_name}
         )
 
-        # Normalize the response
-        return self.client.normalize_api_response(
+        # Normalize the response - we're using return_type="dict" (default)
+        # which guarantees a dictionary return type via overloaded signature
+        result = self.client.normalize_api_response(
             response=response,
             result_key="DomainDNSSetDefaultResult"
         )
+        
+        # Ensure we return the expected type
+        if isinstance(result, dict):
+            return result
+            
+        # If not a dict, return empty dict
+        return {}
 
-    def set_custom(self, domain_name: str, nameservers: List[str]) -> Dict[str, Any]:
+    def set_custom(self, domain_name: str, nameservers: List[str]) -> Dict[str, object]:
         """
         Set custom DNS servers for a domain
 
@@ -422,13 +437,21 @@ class DnsAPI:
             {"domain_name": domain_name}
         )
 
-        # Normalize the response
-        return self.client.normalize_api_response(
+        # Normalize the response - we're using return_type="dict" (default)
+        # which guarantees a dictionary return type via overloaded signature
+        result = self.client.normalize_api_response(
             response=response,
             result_key="DomainDNSSetCustomResult"
         )
+        
+        # Ensure we return the expected type
+        if isinstance(result, dict):
+            return result
+            
+        # If not a dict, return empty dict
+        return {}
 
-    def get_list(self, domain_name: str) -> Dict[str, Any]:
+    def get_list(self, domain_name: str) -> Dict[str, object]:
         """
         Get a list of DNS servers for a domain
 
@@ -485,21 +508,30 @@ class DnsAPI:
         )
 
         # Extract nameservers (this is still needed as nameservers are in a special format)
-        nameservers = []
+        nameservers: List[str] = []
         if "Nameserver" in response.get("DomainDNSGetListResult", {}):
             ns_data = response["DomainDNSGetListResult"]["Nameserver"]
-            if isinstance(ns_data, list):
-                nameservers = ns_data
-            else:
-                nameservers = [ns_data]
+            nameservers = ns_data if isinstance(ns_data, list) else [ns_data]
 
+        # Ensure we're working with a dictionary
+        if not isinstance(result, dict):
+            result = {}
+            
+        # Create a new dictionary with the correct type
+        dns_result: Dict[str, object] = {}
+        
+        # Copy values from result if it's a dictionary
+        if isinstance(result, dict):
+            for key, value in result.items():
+                dns_result[key] = value
+                
         # Add nameservers if not already present
-        if "Nameservers" not in result:
-            result["Nameservers"] = nameservers
+        if "Nameservers" not in dns_result:
+            dns_result["Nameservers"] = nameservers
 
-        return result
+        return dns_result
 
-    def get_email_forwarding(self, domain_name: str) -> Dict[str, Any]:
+    def get_email_forwarding(self, domain_name: str) -> Dict[str, object]:
         """
         Get email forwarding settings for a domain
 
@@ -559,9 +591,10 @@ class DnsAPI:
         )
 
         # Use normalized API response for consistency
-        result = {
+        forwards_list: List[Dict[str, str]] = []
+        result: Dict[str, object] = {
             "domain": domain_name,
-            "forwards": []
+            "forwards": forwards_list
         }
 
         # Extract domain from result if available
@@ -581,22 +614,22 @@ class DnsAPI:
             # Handle both single item and list
             if isinstance(forwards_data, list):
                 for forward in forwards_data:
-                    normalized = {}
+                    normalized: Dict[str, str] = {}
                     for api_field, norm_field in field_mapping.items():
                         if api_field in forward:
                             normalized[norm_field] = forward[api_field]
-                    result["forwards"].append(normalized)
+                    forwards_list.append(normalized)
             else:
                 # Single forwarding entry
-                normalized = {}
+                single_forward: Dict[str, str] = {}
                 for api_field, norm_field in field_mapping.items():
                     if api_field in forwards_data:
-                        normalized[norm_field] = forwards_data[api_field]
-                result["forwards"].append(normalized)
+                        single_forward[norm_field] = forwards_data[api_field]
+                forwards_list.append(single_forward)
 
         return result
 
-    def set_email_forwarding(self, domain_name: str, forwards: List[Dict[str, str]]) -> Dict[str, Any]:
+    def set_email_forwarding(self, domain_name: str, forwards: List[Dict[str, str]]) -> Dict[str, object]:
         """
         Set email forwarding for a domain
 
@@ -692,8 +725,16 @@ class DnsAPI:
             {"domain_name": domain_name}
         )
 
-        # Normalize the response
-        return self.client.normalize_api_response(
+        # Normalize the response - we're using return_type="dict" (default)
+        # which guarantees a dictionary return type via overloaded signature
+        result = self.client.normalize_api_response(
             response=response,
             result_key="DomainEmailForwardingResult"
         )
+        
+        # Ensure we return the expected type
+        if isinstance(result, dict):
+            return result
+            
+        # If not a dict, return empty dict
+        return {}

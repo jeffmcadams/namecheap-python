@@ -2,6 +2,8 @@
 Domains API namespace
 """
 
+from typing import Any
+
 from .base import DomainsBaseAPI
 from .dns import DnsAPI
 from .ns import NsAPI
@@ -19,7 +21,7 @@ class DomainsAPI(DomainsBaseAPI):
     - Transfer operations through the transfer namespace
     """
 
-    def __init__(self, client):
+    def __init__(self, client: Any) -> None:
         super().__init__(client)
 
         # Initialize subnamespaces
