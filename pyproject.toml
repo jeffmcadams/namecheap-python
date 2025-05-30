@@ -1,103 +1,121 @@
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
-
-[tool.poetry]
+[project]
 name = "namecheap-python"
-version = "0.2.3"
-description = "A Python SDK for the Namecheap API"
-authors = ["Adrian Galilea <adriangalilea@gmail.com>"]
-license = "MIT"
+version = "1.0.0"
+description = "A friendly Python SDK for Namecheap API"
+authors = [{name = "Adrian Galilea Delgado", email = "adriangalilea@gmail.com"}]
 readme = "README.md"
-repository = "https://github.com/adriangalilea/namecheap-python"
-documentation = "https://github.com/adriangalilea/namecheap-python#readme"
+license = {text = "MIT"}
+requires-python = ">=3.12"
+keywords = ["namecheap", "domains", "dns", "api", "sdk"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Internet :: Name Service (DNS)",
     "Topic :: Software Development :: Libraries :: Python Modules",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
+    "Typing :: Typed",
 ]
-keywords = ["namecheap", "domain", "dns", "api", "sdk"]
-packages = [
-    { include = "namecheap" }
+# Core dependencies only
+dependencies = [
+    "httpx>=0.27.0",
+    "pydantic>=2.5.0",
+    "python-dotenv>=1.0.0",
+    "xmltodict>=0.13.0",
+    "tldextract>=5.0.0",
 ]
 
-[tool.poetry.dependencies]
-python = ">=3.9"
-requests = ">=2.25.0"
-python-dotenv = ">=0.19.0"
-tldextract = ">=3.1.0"
-xmltodict = ">=0.13.0"
+[project.urls]
+Homepage = "https://github.com/adriangalilea/namecheap-python"
+Repository = "https://github.com/adriangalilea/namecheap-python"
+Issues = "https://github.com/adriangalilea/namecheap-python/issues"
 
-[tool.poetry.group.dev.dependencies]
-black = ">=23.0.0"
-isort = "==6.0.1"
-mypy = ">=1.0.0"
-ruff = ">=0.0.263"
-pre-commit = ">=3.0.0"
-types-requests = ">=2.25.0"
-types-xmltodict = ">=0.13.0"
+[project.optional-dependencies]
+cli = [
+    "click>=8.1.0",
+    "rich>=13.0.0",
+    "PyYAML>=6.0.0",
+]
+tui = [
+    "textual>=0.47.0",
+]
+all = [
+    "click>=8.1.0",
+    "rich>=13.0.0",
+    "PyYAML>=6.0.0",
+    "textual>=0.47.0",
+]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=5.0.0",
+    "pytest-httpx>=0.30.0",
+    "ruff>=0.7.0",
+    "mypy>=1.11.0",
+    "types-xmltodict>=0.13.0",
+]
 
-[tool.black]
-line-length = 88
-target-version = ["py39", "py310", "py311", "py312"]
+[project.scripts]
+namecheap-cli = "namecheap_cli:main"
+namecheap-dns-tui = "namecheap_dns_tui:main"
 
-[tool.isort]
-profile = "black"
-line_length = 88
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.mypy]
-python_version = "3.9"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
+[tool.hatch.build.targets.wheel]
+packages = ["src/namecheap", "src/namecheap_cli", "src/namecheap_dns_tui"]
 
 [tool.ruff]
-target-version = "py39"
-line-length = 88
+target-version = "py312"
+line-length = 100
+src = ["src"]
 
 [tool.ruff.lint]
 select = [
-    "E",  # pycodestyle errors
-    "F",  # pyflakes
-    "I",  # isort
-    "B",  # flake8-bugbear
-    "C4", # flake8-comprehensions
-    "UP", # pyupgrade
-    "N",  # pep8-naming
-    "SIM", # flake8-simplify
-    "TCH", # flake8-type-checking
+    "E",     # pycodestyle errors
+    "F",     # pyflakes
+    "I",     # isort
+    "B",     # flake8-bugbear
+    "UP",    # pyupgrade
+    "N",     # pep8-naming
+    "S",     # flake8-bandit
+    "C4",    # flake8-comprehensions
+    "RET",   # flake8-return
+    "SIM",   # flake8-simplify
 ]
-# Ignore certain error codes project-wide
 ignore = [
-    # Ignore line too long in test files and examples
-    "E501",
-    # Allow module names with dashes in utils directory
-    "N999",
-    # Allow exception without Error suffix (for backwards compatibility)
-    "N818",
-    # Allow simple nested if statements
-    "SIM102",
-    # Allow raising exceptions without from
-    "B904",
-    # Allow using typing annotations of Dict, List etc. for now
-    "UP006",
-    "UP035",
+    "S101",    # Use of assert detected - reasonable for tests and validation
+    "SIM110",  # Use any() - no current violations, keeping for edge cases
+    "SIM118",  # Use `key in dict` instead of `key in dict.keys()` - no current violations
 ]
-# Per-file ignores
-[tool.ruff.lint.per-file-ignores]
-# Ignore f-string without placeholders and unused vars in examples
-"examples/*.py" = ["F541", "F841"]
 
-[tool.poetry.scripts]
-format = "poetry:run_format"
-check = "poetry:run_check"
-bump = "namecheap.utils:bump_version"
+[tool.mypy]
+python_version = "3.12"
+strict = true
+pretty = true
+show_error_codes = true
+show_error_context = true
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = "-ra --cov=namecheap --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["src/namecheap"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
+
+[dependency-groups]
+dev = [
+    "types-pyyaml>=6.0.12.20250516",
+]

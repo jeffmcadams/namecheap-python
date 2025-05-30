@@ -24,19 +24,17 @@ jobs:
       id-token: write  # Needed for PyPI trusted publishing
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
     
-    - name: Set up Python
-      uses: actions/setup-python@v4
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
       with:
-        python-version: '3.x'
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install poetry build
+        enable-cache: true
+        
+    - name: Set up Python
+      run: uv python install 3.12
     
     - name: Configure Git
       run: |
@@ -46,11 +44,37 @@ jobs:
     - name: Bump version
       id: bump_version
       run: |
-        # Bump version using Poetry (single source of truth)
-        poetry version ${{ github.event.inputs.version_part }}
-        NEW_VERSION=$(poetry version -s)
+        # Get current version
+        CURRENT_VERSION=$(grep '^version = ' pyproject.toml | cut -d'"' -f2)
+        
+        # Calculate new version
+        IFS='.' read -ra VERSION_PARTS <<< "$CURRENT_VERSION"
+        MAJOR=${VERSION_PARTS[0]}
+        MINOR=${VERSION_PARTS[1]}
+        PATCH=${VERSION_PARTS[2]}
+        
+        case "${{ github.event.inputs.version_part }}" in
+          major)
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+            PATCH=0
+            ;;
+          minor)
+            MINOR=$((MINOR + 1))
+            PATCH=0
+            ;;
+          patch)
+            PATCH=$((PATCH + 1))
+            ;;
+        esac
+        
+        NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+        
+        # Update version in pyproject.toml
+        sed -i "s/^version = .*/version = \"${NEW_VERSION}\"/" pyproject.toml
+        
         echo "NEW_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
-        echo "Bumped version to ${NEW_VERSION}"
+        echo "Bumped version from ${CURRENT_VERSION} to ${NEW_VERSION}"
     
     - name: Commit version changes
       run: |
@@ -64,7 +88,7 @@ jobs:
         git push origin "v${NEW_VERSION}"
     
     - name: Build package
-      run: python -m build
+      run: uv build
     
     - name: Create GitHub Release
       uses: actions/create-release@v1

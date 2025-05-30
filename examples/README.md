@@ -1,93 +1,156 @@
 # Namecheap Python SDK Examples
 
-This directory contains example scripts demonstrating how to use the Namecheap Python SDK.
+This directory contains examples demonstrating how to use the Namecheap Python SDK and its tools.
 
-## Available Examples
+## 📚 Examples Overview
 
-- **check_domain.py**: A simple script to check domain availability
-- **dns_tool.py**: A command-line tool for managing DNS records
-- **utils/print_table.py**: A utility function for displaying tabular data
+### 1. 🚀 Quickstart Example (`quickstart.py`)
 
-## Running the Examples
+A simple Python script showing basic SDK usage:
 
-All example scripts use environment variables for authentication. You can set these in a `.env` file in the project root:
+```python
+from namecheap import Namecheap
 
+# Initialize client
+nc = Namecheap()
+
+# Check domain availability
+results = nc.domains.check("example.com", include_pricing=True)
+
+# List your domains
+domains = nc.domains.list()
+
+# Manage DNS records
+records = nc.dns.get("example.com")
 ```
-NAMECHEAP_API_USER=your_username
-NAMECHEAP_API_KEY=your_api_key
-NAMECHEAP_USERNAME=your_username
-NAMECHEAP_CLIENT_IP=your_whitelisted_ip
-NAMECHEAP_USE_SANDBOX=True  # Use False for production
-```
 
-### Check Domain Availability
-
-This example checks if domains are available for registration and shows their pricing:
-
+**Run it:**
 ```bash
-# Basic usage
-python -m examples.check_domain example.com yourdomain.com
-
-# With debug output
-python -m examples.check_domain --debug example.com yourdomain.com
+python examples/quickstart.py
 ```
 
-The output shows domain availability, premium status, and pricing for available domains:
+### 2. 💻 Command-Line Interface (CLI)
 
-```
-Results:
-----------------------------------------------------
-Domain             Available  Premium  Price   
-----------------------------------------------------
-example.com        No         No       N/A     
-yourdomain.com     Yes        No       $11.28  
-```
+A comprehensive CLI tool for managing domains and DNS records.
 
-See `check_domain.py` for implementation details.
-
-### DNS Management
-
-This example provides a command-line interface for managing DNS records:
-
+**Installation:**
 ```bash
-# List DNS records for a domain
-python -m examples.dns_tool list yourdomain.com
-
-# Add a DNS record
-python -m examples.dns_tool add yourdomain.com --name www --type A --value 192.0.2.1
-
-# Delete a DNS record
-python -m examples.dns_tool delete yourdomain.com --name www --type A
-
-# Export DNS records to JSON
-python -m examples.dns_tool export yourdomain.com records.json
-
-# Import DNS records from JSON
-python -m examples.dns_tool import yourdomain.com records.json
+pip install namecheap[cli]
 ```
 
-See `dns_tool.py` for implementation details.
+**Example usage:**
+```bash
+# List all domains
+uv run namecheap-cli domain list
 
-## Additional API Functions
+# Check domain availability with pricing
+uv run namecheap-cli domain check example.com coolstartup.io --pricing
 
-The Namecheap Python SDK supports many other API operations that aren't covered by these examples, including:
+# Add DNS record
+uv run namecheap-cli dns add example.com A www 192.0.2.1
 
-- Listing domains in your account
-- Retrieving domain information
-- Registering new domains
-- Renewing domains
-- Setting custom nameservers
+# Export DNS records
+uv run namecheap-cli dns export example.com --format yaml
+```
 
-The SDK is organized into two main interfaces:
+**Example output:**
+```
+                    Domains (4 total)
+┏━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━┓
+┃ Domain            ┃ Status ┃ Expires    ┃ Auto-Renew ┃ Locked ┃
+┡━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━┩
+│ example.com       │ Active │ 2025-10-21 │ ✓          │        │
+│ coolsite.io       │ Active │ 2026-05-25 │ ✓          │        │
+│ myproject.dev     │ Active │ 2026-05-30 │ ✓          │        │
+│ awesome.site      │ Active │ 2026-03-20 │ ✓          │        │
+└───────────────────┴────────┴────────────┴────────────┴────────┘
+```
 
-1. **Standard API**: Direct mapping to the Namecheap API methods
-   ```python
-   client.domains.check(["example.com"])
+**Output formats:** table (default), json, yaml, csv
+
+[Full CLI documentation →](../src/namecheap_cli/README.md)
+
+### 3. 🎨 DNS Manager TUI
+
+An interactive Terminal User Interface for visual DNS management.
+
+![DNS Manager TUI](../src/namecheap_dns_tui/assets/screenshot2.png)
+
+**Installation:**
+```bash
+pip install namecheap[tui]
+```
+
+**Run it:**
+```bash
+uv run namecheap-dns-tui
+```
+
+**Features:**
+- Visual DNS record management
+- Add, edit, and delete records interactively
+- Real-time validation
+- Export/import configurations
+- Keyboard shortcuts for efficiency
+
+[Full TUI documentation →](../src/namecheap_dns_tui/README.md)
+
+## 🔧 Setup
+
+All examples require Namecheap API credentials. You can provide them via:
+
+1. **Environment variables:**
+   ```bash
+   export NAMECHEAP_API_USER="your_username"
+   export NAMECHEAP_API_KEY="your_api_key"
+   export NAMECHEAP_USERNAME="your_username"
    ```
 
-2. **Enhanced API**: Enhanced functionality that combines multiple API calls
-   ```python
-   client.enhanced.domains.check_with_pricing(["example.com"])
+2. **`.env` file** (in project root):
+   ```
+   NAMECHEAP_API_USER=your_username
+   NAMECHEAP_API_KEY=your_api_key
+   NAMECHEAP_USERNAME=your_username
    ```
 
-For more information on these operations, see the main README.md in the project root.
+3. **CLI configuration** (for CLI tool only):
+   ```bash
+   uv run namecheap-cli config init
+   ```
+
+## 📦 Installation Options
+
+```bash
+# Core SDK only
+pip install namecheap
+
+# SDK + CLI tool
+pip install namecheap[cli]
+
+# SDK + TUI tool
+pip install namecheap[tui]
+
+# Everything
+pip install namecheap[all]
+```
+
+## 🚦 Sandbox Mode
+
+All tools support sandbox mode for testing:
+
+```bash
+# SDK
+nc = Namecheap(sandbox=True)
+
+# CLI
+uv run namecheap-cli --sandbox domain list
+
+# Environment variable
+export NAMECHEAP_SANDBOX=true
+```
+
+## 📖 More Resources
+
+- [SDK Documentation](../README.md)
+- [API Reference](https://www.namecheap.com/support/api/methods/)
+- [Getting API Access](https://www.namecheap.com/support/api/intro/)
