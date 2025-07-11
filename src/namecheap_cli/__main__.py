@@ -24,7 +24,24 @@ from .completion import get_completion_script
 console = Console()
 
 # Configuration
-CONFIG_DIR = Path.home() / ".namecheap"
+def get_config_dir() -> Path:
+    """Get config directory, using XDG on Unix-like systems."""
+    import sys
+    import os
+    
+    if sys.platform == "win32":
+        # Windows: use platformdirs for proper Windows paths
+        from platformdirs import user_config_dir
+        return Path(user_config_dir("namecheap"))
+    else:
+        # Linux/macOS: use XDG
+        xdg_config = os.environ.get("XDG_CONFIG_HOME")
+        if xdg_config:
+            return Path(xdg_config) / "namecheap"
+        else:
+            return Path.home() / ".config" / "namecheap"
+
+CONFIG_DIR = get_config_dir()
 CONFIG_FILE = CONFIG_DIR / "config.yaml"
 
 
@@ -54,8 +71,22 @@ class Config:
         if self.client:
             return self.client
 
+        # Check if config file exists
+        if not CONFIG_FILE.exists():
+            console.print("[red]❌ Configuration not found![/red]")
+            console.print(f"\nPlease run [bold cyan]namecheap-cli config init[/bold cyan] to set up your configuration.")
+            console.print(f"\nThis will create a config file at: [dim]{CONFIG_FILE}[/dim]")
+            sys.exit(1)
+
         config = self.load_config()
         profile_config = config.get("profiles", {}).get(self.profile, {})
+
+        # Check if profile exists
+        if not profile_config:
+            console.print(f"[red]❌ Profile '{self.profile}' not found in configuration![/red]")
+            console.print(f"\nAvailable profiles: {', '.join(config.get('profiles', {}).keys()) or 'none'}")
+            console.print(f"\nRun [bold cyan]namecheap-cli config init[/bold cyan] to create a new profile.")
+            sys.exit(1)
 
         # Override sandbox if specified
         if self.sandbox is not None:
@@ -65,7 +96,14 @@ class Config:
             self.client = Namecheap(**profile_config)
             return self.client
         except Exception as e:
-            console.print(f"[red]❌ Error initializing client: {e}[/red]")
+            # Check for common configuration errors
+            error_msg = str(e)
+            if "Parameter APIUser is missing" in error_msg or "Parameter APIKey is missing" in error_msg:
+                console.print("[red]❌ Invalid or incomplete configuration![/red]")
+                console.print(f"\nYour configuration appears to be missing required fields.")
+                console.print(f"Please run [bold cyan]namecheap-cli config init[/bold cyan] to reconfigure.")
+            else:
+                console.print(f"[red]❌ Error initializing client: {e}[/red]")
             sys.exit(1)
 
 
@@ -213,9 +251,8 @@ def domain_list(config: Config, status: str | None, sort: str, expiring_in: int 
 @domain_group.command("check")
 @click.argument("domains", nargs=-1, required=False)
 @click.option("--file", "-f", type=click.File("r"), help="File with domains to check")
-@click.option("--pricing", "-p", is_flag=True, help="Include pricing information")
 @pass_config
-def domain_check(config: Config, domains: tuple[str, ...], file, pricing: bool) -> None:
+def domain_check(config: Config, domains: tuple[str, ...], file) -> None:
     """Check domain availability."""
     nc = config.init_client()
 
@@ -235,38 +272,29 @@ def domain_check(config: Config, domains: tuple[str, ...], file, pricing: bool) 
             transient=True,
         ) as progress:
             progress.add_task(f"Checking {len(domain_list)} domains...", total=None)
-            results = nc.domains.check(*domain_list, include_pricing=pricing)
+            results = nc.domains.check(*domain_list, include_pricing=True)
 
         # Output
         if config.output_format == "table":
             table = Table(title="Domain Availability")
             table.add_column("Domain", style="cyan")
             table.add_column("Available", style="green")
-            if pricing:
-                table.add_column("Price", style="yellow")
-                table.add_column("Total", style="yellow")
+            table.add_column("Price (USD/year)", style="yellow")
 
             for result in results:
                 available_text = "✅ Available" if result.available else "❌ Taken"
                 available_style = "green" if result.available else "red"
 
+                if result.available and result.price:
+                    price_text = f"${result.price:.2f}"
+                else:
+                    price_text = "-"
+
                 row = [
                     result.domain,
                     f"[{available_style}]{available_text}[/{available_style}]",
+                    price_text
                 ]
-
-                if pricing and result.available:
-                    if result.price:
-                        price_text = f"${result.price:.2f}"
-                        total_text = (
-                            f"${result.total_price:.2f}" if result.total_price else price_text
-                        )
-                    else:
-                        price_text = "N/A"
-                        total_text = "N/A"
-                    row.extend([price_text, total_text])
-                elif pricing:
-                    row.extend(["-", "-"])
 
                 table.add_row(*row)
 
@@ -293,16 +321,11 @@ def domain_check(config: Config, domains: tuple[str, ...], file, pricing: bool) 
                     "domain": result.domain,
                     "available": result.available,
                 }
-                if pricing and result.available and result.price:
+                if result.available and result.price:
                     item["price"] = float(result.price)
-                    item["total_price"] = (
-                        float(result.total_price) if result.total_price else float(result.price)
-                    )
                 data.append(item)
 
-            headers = ["domain", "available"]
-            if pricing:
-                headers.extend(["price", "total_price"])
+            headers = ["domain", "available", "price"]
             output_formatter(data, config.output_format, headers)
 
     except NamecheapError as e:
@@ -747,6 +770,12 @@ def config_init() -> None:
         return
 
     console.print("\n[bold cyan]Namecheap CLI Configuration Wizard[/bold cyan]\n")
+    
+    console.print("[dim]To get your API key:[/dim]")
+    console.print("1. Go to [link=https://ap.www.namecheap.com/settings/tools/apiaccess/]https://ap.www.namecheap.com/settings/tools/apiaccess/[/link]")
+    console.print("2. Enable API access")
+    console.print("3. Whitelist your IP address")
+    console.print("4. Generate your API key\n")
 
     # Get configuration values
     api_key = Prompt.ask("API Key", password=True)

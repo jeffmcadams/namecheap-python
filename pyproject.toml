@@ -37,6 +37,7 @@ cli = [
     "click>=8.1.0",
     "rich>=13.0.0",
     "PyYAML>=6.0.0",
+    "platformdirs>=4.0.0",
 ]
 tui = [
     "textual>=0.47.0",
@@ -45,6 +46,7 @@ all = [
     "click>=8.1.0",
     "rich>=13.0.0",
     "PyYAML>=6.0.0",
+    "platformdirs>=4.0.0",
     "textual>=0.47.0",
 ]
 dev = [
