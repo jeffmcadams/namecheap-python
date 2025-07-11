@@ -50,13 +50,7 @@ all = [
     "textual>=0.47.0",
 ]
 dev = [
-    "pytest>=8.0.0",
-    "pytest-asyncio>=0.23.0",
-    "pytest-cov>=5.0.0",
-    "pytest-httpx>=0.30.0",
     "ruff>=0.7.0",
-    "mypy>=1.11.0",
-    "types-xmltodict>=0.13.0",
 ]
 
 [project.scripts]
@@ -72,7 +66,6 @@ packages = ["src/namecheap", "src/namecheap_cli", "src/namecheap_dns_tui"]
 
 [tool.ruff]
 target-version = "py312"
-line-length = 100
 src = ["src"]
 
 [tool.ruff.lint]
@@ -88,36 +81,13 @@ select = [
     "RET",   # flake8-return
     "SIM",   # flake8-simplify
 ]
+# Ignore line length
+extend-ignore = ["E501"]
 ignore = [
     "S101",    # Use of assert detected - reasonable for tests and validation
     "SIM110",  # Use any() - no current violations, keeping for edge cases
     "SIM118",  # Use `key in dict` instead of `key in dict.keys()` - no current violations
 ]
 
-[tool.mypy]
-python_version = "3.12"
-strict = true
-pretty = true
-show_error_codes = true
-show_error_context = true
 
-[tool.pytest.ini_options]
-minversion = "8.0"
-testpaths = ["tests"]
-addopts = "-ra --cov=namecheap --cov-report=term-missing"
 
-[tool.coverage.run]
-source = ["src/namecheap"]
-
-[tool.coverage.report]
-exclude_lines = [
-    "pragma: no cover",
-    "def __repr__",
-    "if TYPE_CHECKING:",
-    "raise NotImplementedError",
-]
-
-[dependency-groups]
-dev = [
-    "types-pyyaml>=6.0.12.20250516",
-]

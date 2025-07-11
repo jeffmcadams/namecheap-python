@@ -189,7 +189,9 @@ class AddRecordModal(ModalScreen):
             with ScrollableContainer(id="form-scroll"):
                 with Vertical(classes="field-group"):
                     yield Label("Record Type:")
-                    initial_type = self.editing_record.type if self.editing_record else "A"
+                    initial_type = (
+                        self.editing_record.type if self.editing_record else "A"
+                    )
                     yield Select(
                         [
                             ("A - IPv4 Address", "A"),
@@ -208,7 +210,9 @@ class AddRecordModal(ModalScreen):
 
                 with Vertical(classes="field-group"):
                     yield Label("Name:")
-                    initial_name = self.editing_record.name if self.editing_record else "@"
+                    initial_name = (
+                        self.editing_record.name if self.editing_record else "@"
+                    )
                     yield Input(
                         placeholder="@ for root or subdomain",
                         id="record-name",
@@ -217,7 +221,9 @@ class AddRecordModal(ModalScreen):
 
                 with Vertical(classes="field-group"):
                     yield Label("Value:")
-                    initial_value = self.editing_record.value if self.editing_record else ""
+                    initial_value = (
+                        self.editing_record.value if self.editing_record else ""
+                    )
                     yield Input(
                         placeholder="Enter value based on record type",
                         id="record-value",
@@ -226,7 +232,9 @@ class AddRecordModal(ModalScreen):
 
                 with Vertical(classes="field-group"):
                     yield Label("TTL (seconds):")
-                    initial_ttl = str(self.editing_record.ttl) if self.editing_record else "1800"
+                    initial_ttl = (
+                        str(self.editing_record.ttl) if self.editing_record else "1800"
+                    )
                     yield Input(placeholder="1800", id="record-ttl", value=initial_ttl)
 
                 with Vertical(classes="field-group", id="priority-group"):
@@ -236,7 +244,9 @@ class AddRecordModal(ModalScreen):
                         if self.editing_record and self.editing_record.priority
                         else ""
                     )
-                    yield Input(placeholder="10", id="record-priority", value=initial_priority)
+                    yield Input(
+                        placeholder="10", id="record-priority", value=initial_priority
+                    )
 
             with Horizontal(classes="button-row"):
                 button_text = "Save Changes" if self.editing_record else "Add Record"
@@ -482,7 +492,9 @@ class DNSManagerApp(App):
                 str(record.priority) if record.priority else "-",
             )
 
-        self.update_status(f"Loaded {len(self.records)} records for {self.current_domain}")
+        self.update_status(
+            f"Loaded {len(self.records)} records for {self.current_domain}"
+        )
 
     def action_refresh(self) -> None:
         """Refresh records."""
@@ -623,7 +635,9 @@ class DNSManagerApp(App):
                                     )
                                     builder._records[
                                         -1
-                                    ].type = "URL"  # Override to use URL instead of URL301
+                                    ].type = (
+                                        "URL"  # Override to use URL instead of URL301
+                                    )
                                 elif rec.type == "URL301":
                                     builder.url(
                                         rec.name,
@@ -674,7 +688,9 @@ class DNSManagerApp(App):
             def handle_confirm(confirmed: bool) -> None:
                 """Handle delete confirmation."""
                 if confirmed:
-                    self.update_status(f"Deleting {record.type} record '{record.name}'...")
+                    self.update_status(
+                        f"Deleting {record.type} record '{record.name}'..."
+                    )
 
                     def delete() -> None:
                         try:
@@ -711,7 +727,9 @@ class DNSManagerApp(App):
                                     )
                                     builder._records[
                                         -1
-                                    ].type = "URL"  # Override to use URL instead of URL301
+                                    ].type = (
+                                        "URL"  # Override to use URL instead of URL301
+                                    )
                                 elif rec.type == "URL301":
                                     builder.url(
                                         rec.name,

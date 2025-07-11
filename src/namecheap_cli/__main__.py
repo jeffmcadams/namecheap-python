@@ -23,23 +23,24 @@ from .completion import get_completion_script
 
 console = Console()
 
+
 # Configuration
 def get_config_dir() -> Path:
     """Get config directory, using XDG on Unix-like systems."""
-    import sys
     import os
-    
+    import sys
+
     if sys.platform == "win32":
         # Windows: use platformdirs for proper Windows paths
         from platformdirs import user_config_dir
+
         return Path(user_config_dir("namecheap"))
-    else:
-        # Linux/macOS: use XDG
-        xdg_config = os.environ.get("XDG_CONFIG_HOME")
-        if xdg_config:
-            return Path(xdg_config) / "namecheap"
-        else:
-            return Path.home() / ".config" / "namecheap"
+    # Linux/macOS: use XDG
+    xdg_config = os.environ.get("XDG_CONFIG_HOME")
+    if xdg_config:
+        return Path(xdg_config) / "namecheap"
+    return Path.home() / ".config" / "namecheap"
+
 
 CONFIG_DIR = get_config_dir()
 CONFIG_FILE = CONFIG_DIR / "config.yaml"
@@ -74,8 +75,12 @@ class Config:
         # Check if config file exists
         if not CONFIG_FILE.exists():
             console.print("[red]❌ Configuration not found![/red]")
-            console.print(f"\nPlease run [bold cyan]namecheap-cli config init[/bold cyan] to set up your configuration.")
-            console.print(f"\nThis will create a config file at: [dim]{CONFIG_FILE}[/dim]")
+            console.print(
+                "\nPlease run [bold cyan]namecheap-cli config init[/bold cyan] to set up your configuration."
+            )
+            console.print(
+                f"\nThis will create a config file at: [dim]{CONFIG_FILE}[/dim]"
+            )
             sys.exit(1)
 
         config = self.load_config()
@@ -83,9 +88,15 @@ class Config:
 
         # Check if profile exists
         if not profile_config:
-            console.print(f"[red]❌ Profile '{self.profile}' not found in configuration![/red]")
-            console.print(f"\nAvailable profiles: {', '.join(config.get('profiles', {}).keys()) or 'none'}")
-            console.print(f"\nRun [bold cyan]namecheap-cli config init[/bold cyan] to create a new profile.")
+            console.print(
+                f"[red]❌ Profile '{self.profile}' not found in configuration![/red]"
+            )
+            console.print(
+                f"\nAvailable profiles: {', '.join(config.get('profiles', {}).keys()) or 'none'}"
+            )
+            console.print(
+                "\nRun [bold cyan]namecheap-cli config init[/bold cyan] to create a new profile."
+            )
             sys.exit(1)
 
         # Override sandbox if specified
@@ -98,10 +109,17 @@ class Config:
         except Exception as e:
             # Check for common configuration errors
             error_msg = str(e)
-            if "Parameter APIUser is missing" in error_msg or "Parameter APIKey is missing" in error_msg:
+            if (
+                "Parameter APIUser is missing" in error_msg
+                or "Parameter APIKey is missing" in error_msg
+            ):
                 console.print("[red]❌ Invalid or incomplete configuration![/red]")
-                console.print(f"\nYour configuration appears to be missing required fields.")
-                console.print(f"Please run [bold cyan]namecheap-cli config init[/bold cyan] to reconfigure.")
+                console.print(
+                    "\nYour configuration appears to be missing required fields."
+                )
+                console.print(
+                    "Please run [bold cyan]namecheap-cli config init[/bold cyan] to reconfigure."
+                )
             else:
                 console.print(f"[red]❌ Error initializing client: {e}[/red]")
             sys.exit(1)
@@ -131,7 +149,9 @@ def output_formatter(data: Any, format: str, headers: list[str] | None = None) -
 
 
 @click.group()
-@click.option("--config", "config_path", type=click.Path(exists=True), help="Config file path")
+@click.option(
+    "--config", "config_path", type=click.Path(exists=True), help="Config file path"
+)
 @click.option("--profile", default="default", help="Config profile to use")
 @click.option("--sandbox", is_flag=True, help="Use sandbox API")
 @click.option(
@@ -146,7 +166,9 @@ def output_formatter(data: Any, format: str, headers: list[str] | None = None) -
 @click.option("--verbose", "-v", is_flag=True, help="Verbose output")
 @click.version_option()
 @pass_config
-def cli(config: Config, config_path, profile, sandbox, output, no_color, quiet, verbose) -> None:
+def cli(
+    config: Config, config_path, profile, sandbox, output, no_color, quiet, verbose
+) -> None:
     """Namecheap CLI - Manage domains and DNS records."""
     config.output_format = output
     config.no_color = no_color
@@ -167,10 +189,14 @@ def domain_group() -> None:
 
 @domain_group.command("list")
 @click.option("--status", type=click.Choice(["active", "expired", "locked"]))
-@click.option("--sort", type=click.Choice(["name", "expires", "created"]), default="name")
+@click.option(
+    "--sort", type=click.Choice(["name", "expires", "created"]), default="name"
+)
 @click.option("--expiring-in", type=int, help="Show domains expiring within N days")
 @pass_config
-def domain_list(config: Config, status: str | None, sort: str, expiring_in: int | None) -> None:
+def domain_list(
+    config: Config, status: str | None, sort: str, expiring_in: int | None
+) -> None:
     """List all domains."""
     nc = config.init_client()
 
@@ -293,7 +319,7 @@ def domain_check(config: Config, domains: tuple[str, ...], file) -> None:
                 row = [
                     result.domain,
                     f"[{available_style}]{available_text}[/{available_style}]",
-                    price_text
+                    price_text,
                 ]
 
                 table.add_row(*row)
@@ -354,12 +380,18 @@ def domain_info(config: Config, domain: str) -> None:
                 f"[bold]Status:[/bold] "
                 f"{'Active' if not domain_obj.is_expired else '[red]Expired[/red]'}"
             )
-            console.print(f"[bold]Created:[/bold] {domain_obj.created.strftime('%Y-%m-%d')}")
-            console.print(f"[bold]Expires:[/bold] {domain_obj.expires.strftime('%Y-%m-%d')}")
+            console.print(
+                f"[bold]Created:[/bold] {domain_obj.created.strftime('%Y-%m-%d')}"
+            )
+            console.print(
+                f"[bold]Expires:[/bold] {domain_obj.expires.strftime('%Y-%m-%d')}"
+            )
             console.print(
                 f"[bold]Auto-Renew:[/bold] {'✓ Enabled' if domain_obj.auto_renew else '✗ Disabled'}"
             )
-            console.print(f"[bold]Locked:[/bold] {'🔒 Yes' if domain_obj.is_locked else '🔓 No'}")
+            console.print(
+                f"[bold]Locked:[/bold] {'🔒 Yes' if domain_obj.is_locked else '🔓 No'}"
+            )
             console.print(
                 f"[bold]WHOIS Guard:[/bold] "
                 f"{'✓ Enabled' if domain_obj.whois_guard else '✗ Disabled'}"
@@ -368,7 +400,9 @@ def domain_info(config: Config, domain: str) -> None:
             # Calculate days until expiration
             days_left = (domain_obj.expires - datetime.now()).days
             if days_left < 30:
-                console.print(f"\n⚠️  [yellow]Domain expires in {days_left} days![/yellow]")
+                console.print(
+                    f"\n⚠️  [yellow]Domain expires in {days_left} days![/yellow]"
+                )
             elif days_left < 60:
                 console.print(f"\n📅 Domain expires in {days_left} days")
 
@@ -501,7 +535,9 @@ def dns_add(
 
     try:
         # Create the new record
-        new_record = DNSRecord(name=name, type=record_type, value=value, ttl=ttl, priority=priority)
+        new_record = DNSRecord(
+            name=name, type=record_type, value=value, ttl=ttl, priority=priority
+        )
 
         # Get existing records
         if not config.quiet:
@@ -572,7 +608,9 @@ def dns_delete(
     nc = config.init_client()
 
     if all and not (type or name or value) and not yes:
-        console.print(f"[red]⚠️  Warning: This will delete ALL DNS records for {domain}[/red]")
+        console.print(
+            f"[red]⚠️  Warning: This will delete ALL DNS records for {domain}[/red]"
+        )
         if not Confirm.ask("Are you sure?", default=False):
             console.print("[yellow]Cancelled[/yellow]")
             return
@@ -609,7 +647,9 @@ def dns_delete(
 
             # Show what will be deleted
             if not yes and not config.quiet:
-                console.print(f"[yellow]Will delete {len(records_to_delete)} record(s):[/yellow]")
+                console.print(
+                    f"[yellow]Will delete {len(records_to_delete)} record(s):[/yellow]"
+                )
                 for r in records_to_delete:
                     console.print(f"  • {r.type} {r.name} → {r.value}")
 
@@ -664,7 +704,9 @@ def dns_delete(
     default="yaml",
     help="Export format",
 )
-@click.option("--output", "-o", type=click.File("w"), help="Output file (default: stdout)")
+@click.option(
+    "--output", "-o", type=click.File("w"), help="Output file (default: stdout)"
+)
 @pass_config
 def dns_export(config: Config, domain: str, format: str, output) -> None:
     """Export DNS records."""
@@ -679,7 +721,9 @@ def dns_export(config: Config, domain: str, format: str, output) -> None:
 
             for r in sorted(records, key=lambda x: (x.type, x.name)):
                 if r.type == "MX":
-                    lines.append(f"{r.name}\t{r.ttl}\tIN\t{r.type}\t{r.priority}\t{r.value}")
+                    lines.append(
+                        f"{r.name}\t{r.ttl}\tIN\t{r.type}\t{r.priority}\t{r.value}"
+                    )
                 else:
                     lines.append(f"{r.name}\t{r.ttl}\tIN\t{r.type}\t{r.value}")
 
@@ -721,7 +765,9 @@ def dns_export(config: Config, domain: str, format: str, output) -> None:
         if output:
             output.write(content)
             if not config.quiet:
-                console.print(f"[green]✅ Exported {len(records)} records to {output.name}[/green]")
+                console.print(
+                    f"[green]✅ Exported {len(records)} records to {output.name}[/green]"
+                )
         else:
             click.echo(content)
 
@@ -744,7 +790,9 @@ def account_balance(config: Config) -> None:
 
     try:
         # This would need to be implemented in the SDK
-        console.print("[yellow]Account balance check not yet implemented in SDK[/yellow]")
+        console.print(
+            "[yellow]Account balance check not yet implemented in SDK[/yellow]"
+        )
         console.print("This feature requires the users.getBalances API method")
 
     except NamecheapError as e:
@@ -770,9 +818,11 @@ def config_init() -> None:
         return
 
     console.print("\n[bold cyan]Namecheap CLI Configuration Wizard[/bold cyan]\n")
-    
+
     console.print("[dim]To get your API key:[/dim]")
-    console.print("1. Go to [link=https://ap.www.namecheap.com/settings/tools/apiaccess/]https://ap.www.namecheap.com/settings/tools/apiaccess/[/link]")
+    console.print(
+        "1. Go to [link=https://ap.www.namecheap.com/settings/tools/apiaccess/]https://ap.www.namecheap.com/settings/tools/apiaccess/[/link]"
+    )
     console.print("2. Enable API access")
     console.print("3. Whitelist your IP address")
     console.print("4. Generate your API key\n")
@@ -812,7 +862,9 @@ def config_init() -> None:
 
     console.print(f"\n[green]✅ Configuration saved to {CONFIG_FILE}[/green]")
     console.print("\n💡 Tips:")
-    console.print("  • You can also use environment variables (NAMECHEAP_API_KEY, etc.)")
+    console.print(
+        "  • You can also use environment variables (NAMECHEAP_API_KEY, etc.)"
+    )
     console.print("  • Add more profiles with: nc config add-profile <name>")
     console.print("  • Use a profile with: nc --profile <name> <command>")
 
@@ -839,7 +891,9 @@ def completion(shell: str) -> None:
         console.print("[dim]nc completion zsh >> ~/.zshrc[/dim]")
     elif shell == "fish":
         console.print("[dim]# Add to fish config:[/dim]")
-        console.print("[dim]nc completion fish > ~/.config/fish/completions/nc.fish[/dim]")
+        console.print(
+            "[dim]nc completion fish > ~/.config/fish/completions/nc.fish[/dim]"
+        )
 
 
 def main() -> None:

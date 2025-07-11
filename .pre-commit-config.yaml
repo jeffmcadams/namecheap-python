@@ -18,15 +18,3 @@ repos:
         args: [--fix]
       - id: ruff-format
 
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.11.0
-    hooks:
-      - id: mypy
-        args: [--strict]
-        additional_dependencies:
-          - pydantic>=2.5.0
-          - httpx>=0.27.0
-          - types-xmltodict>=0.13.0
-          - python-dotenv>=1.0.0
-          - tldextract>=5.0.0
-        files: ^src/

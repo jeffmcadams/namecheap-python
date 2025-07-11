@@ -47,7 +47,9 @@ print("🌐 DNS Management example:")
 try:
     # Get current DNS records for a domain
     # Use the first domain from your account, or specify one
-    domain_name = my_domains[0].name if my_domains else "example.com"  # Replace with your domain
+    domain_name = (
+        my_domains[0].name if my_domains else "example.com"
+    )  # Replace with your domain
     print(f"Current DNS records for {domain_name}:")
 
     records = nc.dns.get(domain_name)

@@ -56,7 +56,9 @@ def normalize_xml_response(data: dict[str, Any]) -> dict[str, Any]:
         # Fix known typos from Namecheap
         if key == "@YourAdditonalCost":  # Their typo (missing 'i' in Additional)
             normalized["@YourAdditionalCost"] = value  # Correct spelling
-            logger.debug("Fixed Namecheap typo: @YourAdditonalCost -> @YourAdditionalCost")
+            logger.debug(
+                "Fixed Namecheap typo: @YourAdditonalCost -> @YourAdditionalCost"
+            )
 
         # Debug canary: Alert if they have both versions (means they're fixing it)
         if "@YourAdditionalCost" in data and "@YourAdditonalCost" in data:
@@ -70,7 +72,8 @@ def normalize_xml_response(data: dict[str, Any]) -> dict[str, Any]:
             normalized[key] = normalize_xml_response(value)
         elif isinstance(value, list):
             normalized[key] = [
-                normalize_xml_response(item) if isinstance(item, dict) else item for item in value
+                normalize_xml_response(item) if isinstance(item, dict) else item
+                for item in value
             ]
 
     return normalized

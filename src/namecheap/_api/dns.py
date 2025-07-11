@@ -35,7 +35,9 @@ class DNSRecordBuilder:
             Self for chaining
         """
         self._records.append(
-            DNSRecord.model_validate({"@Name": name, "@Type": "A", "@Address": ip, "@TTL": ttl})
+            DNSRecord.model_validate(
+                {"@Name": name, "@Type": "A", "@Address": ip, "@TTL": ttl}
+            )
         )
         return self
 
@@ -94,7 +96,13 @@ class DNSRecordBuilder:
         """
         self._records.append(
             DNSRecord.model_validate(
-                {"@Name": name, "@Type": "MX", "@Address": server, "@TTL": ttl, "@MXPref": priority}
+                {
+                    "@Name": name,
+                    "@Type": "MX",
+                    "@Address": server,
+                    "@TTL": ttl,
+                    "@MXPref": priority,
+                }
             )
         )
         return self

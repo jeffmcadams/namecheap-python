@@ -17,7 +17,9 @@ from .base import BaseAPI
 class DomainsAPI(BaseAPI):
     """Domain management operations."""
 
-    def check(self, *domains: str, include_pricing: bool = False) -> builtins.list[DomainCheck]:
+    def check(
+        self, *domains: str, include_pricing: bool = False
+    ) -> builtins.list[DomainCheck]:
         """
         Check domain availability.
 
@@ -158,7 +160,9 @@ class DomainsAPI(BaseAPI):
 
         # Add contact info if provided
         if contact:
-            contact_data = contact.model_dump() if isinstance(contact, Contact) else contact
+            contact_data = (
+                contact.model_dump() if isinstance(contact, Contact) else contact
+            )
             # Add contact fields for all types (Registrant, Tech, Admin, AuxBilling)
             for contact_type in ["Registrant", "Tech", "Admin", "AuxBilling"]:
                 for field, value in contact_data.items():
@@ -284,7 +288,9 @@ class DomainsAPI(BaseAPI):
         assert isinstance(result, dict)
         return bool(result)
 
-    def _get_pricing(self, domains: builtins.list[str]) -> dict[str, dict[str, Decimal | None]]:
+    def _get_pricing(
+        self, domains: builtins.list[str]
+    ) -> dict[str, dict[str, Decimal | None]]:
         """
         Get pricing information for domains.
 
@@ -362,7 +368,9 @@ class DomainsAPI(BaseAPI):
                             if not isinstance(products, list):
                                 products = [products] if products else []
 
-                            logger.debug(f"Found {len(products)} products in REGISTER category")
+                            logger.debug(
+                                f"Found {len(products)} products in REGISTER category"
+                            )
 
                             # Find the product matching our TLD
                             for product in products:
@@ -370,7 +378,9 @@ class DomainsAPI(BaseAPI):
                                     continue
 
                                 product_name = product.get("@Name", "")
-                                logger.debug(f"Checking product: {product_name} vs {tld}")
+                                logger.debug(
+                                    f"Checking product: {product_name} vs {tld}"
+                                )
 
                                 if product_name.lower() == tld.lower():
                                     # Get price list
@@ -378,7 +388,9 @@ class DomainsAPI(BaseAPI):
                                     if not isinstance(price_info, list):
                                         price_info = [price_info] if price_info else []
 
-                                    logger.debug(f"Found {len(price_info)} price entries for {tld}")
+                                    logger.debug(
+                                        f"Found {len(price_info)} price entries for {tld}"
+                                    )
 
                                     # Find 1 year price
                                     for price in price_info:
@@ -405,13 +417,17 @@ class DomainsAPI(BaseAPI):
                                             # Apply to all domains with this TLD
                                             for domain in domain_list:
                                                 pricing[domain] = {
-                                                    "regular_price": Decimal(regular_price)
+                                                    "regular_price": Decimal(
+                                                        regular_price
+                                                    )
                                                     if regular_price
                                                     else None,
                                                     "your_price": Decimal(your_price)
                                                     if your_price
                                                     else None,
-                                                    "retail_price": Decimal(retail_price)
+                                                    "retail_price": Decimal(
+                                                        retail_price
+                                                    )
                                                     if retail_price
                                                     else None,
                                                 }

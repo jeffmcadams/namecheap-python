@@ -74,13 +74,21 @@ class ErrorDisplay:
 
             if hasattr(error, "_ip_help") and error._ip_help is not None:
                 console.print("\n[yellow]🔍 IP Configuration Issue[/yellow]")
-                console.print(f"   Your current IP: [cyan]{error._ip_help['actual_ip']}[/cyan]")
-                console.print(f"   Configured IP:  [cyan]{error._ip_help['configured_ip']}[/cyan]")
+                console.print(
+                    f"   Your current IP: [cyan]{error._ip_help['actual_ip']}[/cyan]"
+                )
+                console.print(
+                    f"   Configured IP:  [cyan]{error._ip_help['configured_ip']}[/cyan]"
+                )
                 console.print("\n[yellow]💡 To fix this:[/yellow]")
-                console.print("   1. Log in to [link=https://www.namecheap.com]Namecheap[/link]")
+                console.print(
+                    "   1. Log in to [link=https://www.namecheap.com]Namecheap[/link]"
+                )
                 console.print("   2. Go to Profile → Tools → API Access")
                 actual_ip = error._ip_help["actual_ip"]
-                console.print(f"   3. Add this IP to whitelist: [cyan]{actual_ip}[/cyan]")
+                console.print(
+                    f"   3. Add this IP to whitelist: [cyan]{actual_ip}[/cyan]"
+                )
                 console.print(
                     f"   4. Update your .env file: [cyan]NAMECHEAP_CLIENT_IP={actual_ip}[/cyan]"
                 )

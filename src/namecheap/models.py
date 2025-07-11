@@ -89,7 +89,9 @@ class DomainCheck(XMLModel):
     """
 
     domain: str = Field(alias="@Domain", description="Domain name checked")
-    available: bool = Field(alias="@Available", description="Whether domain is available")
+    available: bool = Field(
+        alias="@Available", description="Whether domain is available"
+    )
     premium: bool = Field(
         default=False,
         alias="@IsPremiumName",
@@ -182,8 +184,8 @@ class DNSRecord(XMLModel):
     """A DNS record."""
 
     name: str = Field(alias="@Name", default="@")
-    type: Literal["A", "AAAA", "CNAME", "MX", "NS", "TXT", "URL", "URL301", "FRAME"] = Field(
-        alias="@Type"
+    type: Literal["A", "AAAA", "CNAME", "MX", "NS", "TXT", "URL", "URL301", "FRAME"] = (
+        Field(alias="@Type")
     )
     value: str = Field(alias="@Address")
     ttl: int = Field(alias="@TTL", default=1800)
