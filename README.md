@@ -13,25 +13,16 @@ A modern, friendly Python SDK for the Namecheap API with comprehensive CLI and T
 - **Comprehensive logging** with beautiful colored output
 - **Sandbox support** for safe testing
 
-## 📦 Installation
-
-```bash
-# Core SDK only
-pip install namecheap-python
-
-# With CLI tool
-pip install namecheap-python[cli]
-
-# With TUI tool  
-pip install namecheap-python[tui]
-
-# Everything
-pip install namecheap-python[all]
-```
-
 ## 🎯 Quick Start
 
-### SDK Usage
+**Requires Python 3.12 or higher**
+
+### `namecheap-python`: Core Python SDK Library
+
+```bash
+# Add as a dependency to your project
+uv add namecheap-python
+```
 
 ```python
 from namecheap import Namecheap
@@ -60,18 +51,22 @@ nc.dns.set("example.com",
 )
 ```
 
-### CLI Usage
+### `namecheap-cli`: CLI tool
+
+It was meant as a proof of concept to showcase `namecheap-python`, but it is a tool that I use
 
 ```bash
-# Configure CLI
-uv run namecheap-cli config init
-
 # List domains with beautiful table output
-uv run namecheap-cli domain list
-```
 
-Output:
-```
+# Run it without install with:
+uvx --from 'namecheap-python[cli]' namecheap-cli domain list
+
+# Or install it permanently with:
+uv tool install --python 3.12 'namecheap-python[cli]'
+
+# Then run
+namecheap-cli domain list
+
                     Domains (4 total)
 ┏━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━┓
 ┃ Domain            ┃ Status ┃ Expires    ┃ Auto-Renew ┃ Locked ┃
@@ -83,22 +78,42 @@ Output:
 └───────────────────┴────────┴────────────┴────────────┴────────┘
 ```
 
+Configure it before first use:
+
+```bash
+# Interactive setup
+namecheap-cli config init
+
+# Creates config file at:
+# - Linux/macOS: $XDG_CONFIG_HOME/namecheap/config.yaml (or ~/.config/namecheap/config.yaml)
+# - Windows: %APPDATA%\namecheap\config.yaml
+```
+Check domain availability and pricing:
+
 ```bash
 # Check domain availability
-uv run namecheap-cli domain check myawesome.com coolstartup.io
+❯ namecheap-cli domain check myawesome.com coolstartup.io
+                Domain Availability
+┏━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
+┃ Domain         ┃ Available    ┃ Price (USD/year) ┃
+┡━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
+│ myawesome.com  │ ❌ Taken     │ -                │
+│ coolstartup.io │ ✅ Available │ $34.98           │
+└────────────────┴──────────────┴──────────────────┘
 
-# Manage DNS records
-uv run namecheap-cli dns list example.com
-uv run namecheap-cli dns add example.com A www 192.0.2.1
-uv run namecheap-cli dns export example.com --format yaml
+💡 Suggestions for taken domains:
+  • myawesome.com → myawesome.net, myawesome.io, getmyawesome.com
+```
 
-# Setup GitHub Pages (example: tdo.garden)
+Manage DNS records:
+
+In this example I'll set up GitHub Pages for my domain `tdo.garden`
+
+```bash
 # First, check current DNS records (before setup)
-uv run namecheap-cli dns list tdo.garden
-```
+namecheap-cli dns list tdo.garden
 
-Initial state (Namecheap default parking page):
-```
+# Initial state (Namecheap default parking page):
                          DNS Records for tdo.garden (2 total)
 ┏━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━┓
 ┃ Type     ┃ Name                 ┃ Value                      ┃ TTL      ┃ Priority ┃
@@ -106,40 +121,34 @@ Initial state (Namecheap default parking page):
 │ CNAME    │ www                  │ parkingpage.namecheap.com. │ 1800     │ 10       │
 │ URL      │ @                    │ http://www.tdo.garden/     │ 1800     │ 10       │
 └──────────┴──────────────────────┴────────────────────────────┴──────────┴──────────┘
-```
 
-```bash
 # Add GitHub Pages A records for apex domain
-❯ uv run namecheap-cli dns add tdo.garden A @ 185.199.108.153
-      Built namecheap-python @ file:///Users/adrian/Developer/namecheap-python
-Uninstalled 1 package in 0.77ms
-Installed 1 package in 1ms
+❯ namecheap-cli dns add tdo.garden A @ 185.199.108.153
 Adding A record to tdo.garden...
 ✅ Added A record successfully!
 
-❯ uv run namecheap-cli dns add tdo.garden A @ 185.199.109.153
+❯ namecheap-cli dns add tdo.garden A @ 185.199.109.153
 Adding A record to tdo.garden...
 ✅ Added A record successfully!
 
-❯ uv run namecheap-cli dns add tdo.garden A @ 185.199.110.153
+❯ namecheap-cli dns add tdo.garden A @ 185.199.110.153
 Adding A record to tdo.garden...
 ✅ Added A record successfully!
 
-❯ uv run namecheap-cli dns add tdo.garden A @ 185.199.111.153
+❯ namecheap-cli dns add tdo.garden A @ 185.199.111.153
 Adding A record to tdo.garden...
 ✅ Added A record successfully!
 
 # Add CNAME for www subdomain
-❯ uv run namecheap-cli dns add tdo.garden CNAME www adriangalilea.github.io
+❯ namecheap-cli dns add tdo.garden CNAME www adriangalilea.github.io
 Adding CNAME record to tdo.garden...
 ✅ Added CNAME record successfully!
 
 # Verify the setup
-❯ uv run namecheap-cli dns list tdo.garden
-```
+❯ namecheap-cli dns list tdo.garden
 
-Final state (with GitHub Pages + old records still present):
-```
+# Final state with GitHub Pages + old records still present that you may want to remove:
+```bash
                          DNS Records for tdo.garden (7 total)
 ┏━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━┓
 ┃ Type     ┃ Name                 ┃ Value                      ┃ TTL      ┃ Priority ┃
@@ -154,17 +163,26 @@ Final state (with GitHub Pages + old records still present):
 └──────────┴──────────────────────┴────────────────────────────┴──────────┴──────────┘
 ```
 
-Note: You may want to remove the old parking page records after confirming GitHub Pages works.
-```
 
-### TUI Usage
+You can also export DNS records:
+
+```bash
+namecheap-cli dns export example.com --format yaml
+```
+### `namecheap-dns-tui`: TUI for DNS management
 
 ```bash
 # Launch interactive DNS manager
-uv run namecheap-dns-tui
+namecheap-dns-tui
 ```
 
 ![DNS Manager TUI](src/namecheap_dns_tui/assets/screenshot2.png)
+
+## Install both the CLI and TUI
+
+```bash
+uv tool install --python 3.12 'namecheap-python[all]'
+```
 
 ## 📖 Documentation
 
@@ -202,15 +220,6 @@ nc = Namecheap(
     client_ip="1.2.3.4",       # Optional, auto-detected
     sandbox=False              # Production mode
 )
-```
-
-### CLI Configuration
-
-```bash
-# Interactive setup
-uv run namecheap-cli config init
-
-# Creates ~/.namecheap/config.yaml with profiles
 ```
 
 ## 🔧 Advanced SDK Usage
