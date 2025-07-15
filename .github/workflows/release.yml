@@ -89,7 +89,30 @@ jobs:
           git tag -a "v$VERSION" -m "Release v$VERSION"
           git push origin "v$VERSION"
       
-      - name: Trigger Release Workflow
+      - name: Check for cliff.toml
         if: steps.check.outputs.exists == 'false'
+        id: check-cliff
         run: |
-          gh workflow run git-cliff.yml
+          if [ -f .github/cliff.toml ]; then
+            echo "has_cliff=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_cliff=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Generate Changelog
+        if: steps.check.outputs.exists == 'false' && steps.check-cliff.outputs.has_cliff == 'true'
+        id: git-cliff
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: .github/cliff.toml
+          args: --latest
+        env:
+          OUTPUT: CHANGELOG.md
+          GITHUB_REPO: ${{ github.repository }}
+      
+      - name: Create GitHub Release
+        if: steps.check.outputs.exists == 'false' && steps.check-cliff.outputs.has_cliff == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.check.outputs.version }}
+          body: ${{ steps.git-cliff.outputs.content }}
