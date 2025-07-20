@@ -23,6 +23,7 @@ dependencies = [
     "httpx>=0.27.0",
     "pydantic>=2.5.0",
     "python-dotenv>=1.0.0",
+    "rich>=13.0.0",
     "xmltodict>=0.13.0",
     "tldextract>=5.0.0",
 ]
@@ -35,7 +36,6 @@ Issues = "https://github.com/adriangalilea/namecheap-python/issues"
 [project.optional-dependencies]
 cli = [
     "click>=8.1.0",
-    "rich>=13.0.0",
     "PyYAML>=6.0.0",
     "platformdirs>=4.0.0",
 ]
@@ -44,7 +44,6 @@ tui = [
 ]
 all = [
     "click>=8.1.0",
-    "rich>=13.0.0",
     "PyYAML>=6.0.0",
     "platformdirs>=4.0.0",
     "textual>=0.47.0",
