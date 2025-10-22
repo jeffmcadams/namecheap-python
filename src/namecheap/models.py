@@ -188,7 +188,7 @@ class DNSRecord(XMLModel):
         Field(alias="@Type")
     )
     value: str = Field(alias="@Address")
-    ttl: int = Field(alias="@TTL", default=1800)
+    ttl: int = Field(alias="@TTL", default=1799)  # 1799 = "Automatic" in Namecheap UI
     priority: int | None = Field(alias="@MXPref", default=None)
 
     @field_validator("ttl", mode="before")
@@ -196,9 +196,9 @@ class DNSRecord(XMLModel):
     def parse_ttl(cls, v: Any) -> int:
         """Ensure TTL is within valid range."""
         try:
-            ttl = int(v) if v else 1800
+            ttl = int(v) if v else 1799
         except (ValueError, TypeError):
-            ttl = 1800
+            ttl = 1799
         return max(60, min(86400, ttl))
 
     @field_validator("priority", mode="before")

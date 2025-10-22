@@ -512,7 +512,12 @@ def dns_list(config: Config, domain: str, type: str | None, name: str | None) ->
 )
 @click.argument("name")
 @click.argument("value")
-@click.option("--ttl", type=int, default=1800, help="TTL in seconds (60-86400)")
+@click.option(
+    "--ttl",
+    type=int,
+    default=1799,
+    help="TTL in seconds (60-86400, default: 1799 = Automatic)",
+)
 @click.option("--priority", type=int, help="Priority (required for MX records)")
 @pass_config
 def dns_add(
@@ -849,7 +854,7 @@ def config_init() -> None:
             "color": True,
             "auto_renew": True,
             "whois_privacy": True,
-            "dns_ttl": 1800,
+            "dns_ttl": 1799,
         },
     }
 

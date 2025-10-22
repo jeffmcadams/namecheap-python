@@ -144,9 +144,11 @@ nc dns add example.com TXT @ "v=spf1 include:_spf.google.com ~all"
 # Add URL redirect
 nc dns add example.com URL301 www https://newsite.com
 
-# Custom TTL
+# Custom TTL (default is 1799 = "Automatic" in Namecheap UI)
 nc dns add example.com A www 192.0.2.1 --ttl 300
 ```
+
+**Note:** The default TTL is 1799 seconds, which displays as "Automatic" in the Namecheap web interface.
 
 ### Delete DNS Records
 

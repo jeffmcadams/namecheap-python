@@ -233,9 +233,9 @@ class AddRecordModal(ModalScreen):
                 with Vertical(classes="field-group"):
                     yield Label("TTL (seconds):")
                     initial_ttl = (
-                        str(self.editing_record.ttl) if self.editing_record else "1800"
+                        str(self.editing_record.ttl) if self.editing_record else "1799"
                     )
-                    yield Input(placeholder="1800", id="record-ttl", value=initial_ttl)
+                    yield Input(placeholder="1799", id="record-ttl", value=initial_ttl)
 
                 with Vertical(classes="field-group", id="priority-group"):
                     yield Label("Priority:")
@@ -296,7 +296,7 @@ class AddRecordModal(ModalScreen):
                 record_type = self.query_one("#record-type", Select).value
                 name = self.query_one("#record-name", Input).value or "@"
                 value = self.query_one("#record-value", Input).value
-                ttl_str = self.query_one("#record-ttl", Input).value or "1800"
+                ttl_str = self.query_one("#record-ttl", Input).value or "1799"
                 ttl = max(60, min(86400, int(ttl_str)))
 
                 priority = None

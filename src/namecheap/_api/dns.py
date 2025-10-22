@@ -22,14 +22,14 @@ class DNSRecordBuilder:
         """Initialize empty builder."""
         self._records: list[DNSRecord] = []
 
-    def a(self, name: str, ip: str, ttl: int = 1800) -> Self:
+    def a(self, name: str, ip: str, ttl: int = 1799) -> Self:
         """
         Add an A record.
 
         Args:
             name: Record name (@ for root)
             ip: IPv4 address
-            ttl: Time to live in seconds (60-86400, default: 1800)
+            ttl: Time to live in seconds (60-86400, default: 1799 = "Automatic")
 
         Returns:
             Self for chaining
@@ -41,14 +41,14 @@ class DNSRecordBuilder:
         )
         return self
 
-    def aaaa(self, name: str, ipv6: str, ttl: int = 1800) -> Self:
+    def aaaa(self, name: str, ipv6: str, ttl: int = 1799) -> Self:
         """
         Add an AAAA record.
 
         Args:
             name: Record name (@ for root)
             ipv6: IPv6 address
-            ttl: Time to live in seconds
+            ttl: Time to live in seconds (default: 1799 = "Automatic")
 
         Returns:
             Self for chaining
@@ -60,14 +60,14 @@ class DNSRecordBuilder:
         )
         return self
 
-    def cname(self, name: str, target: str, ttl: int = 1800) -> Self:
+    def cname(self, name: str, target: str, ttl: int = 1799) -> Self:
         """
         Add a CNAME record.
 
         Args:
             name: Record name (cannot be @)
             target: Target domain
-            ttl: Time to live in seconds
+            ttl: Time to live in seconds (default: 1799 = "Automatic")
 
         Returns:
             Self for chaining
@@ -81,7 +81,7 @@ class DNSRecordBuilder:
         )
         return self
 
-    def mx(self, name: str, server: str, priority: int = 10, ttl: int = 1800) -> Self:
+    def mx(self, name: str, server: str, priority: int = 10, ttl: int = 1799) -> Self:
         """
         Add an MX record.
 
@@ -89,7 +89,7 @@ class DNSRecordBuilder:
             name: Record name (@ for root)
             server: Mail server hostname
             priority: MX priority (lower = higher priority)
-            ttl: Time to live in seconds
+            ttl: Time to live in seconds (default: 1799 = "Automatic")
 
         Returns:
             Self for chaining
@@ -107,14 +107,14 @@ class DNSRecordBuilder:
         )
         return self
 
-    def txt(self, name: str, value: str, ttl: int = 1800) -> Self:
+    def txt(self, name: str, value: str, ttl: int = 1799) -> Self:
         """
         Add a TXT record.
 
         Args:
             name: Record name (@ for root)
             value: Text value
-            ttl: Time to live in seconds
+            ttl: Time to live in seconds (default: 1799 = "Automatic")
 
         Returns:
             Self for chaining
@@ -126,14 +126,14 @@ class DNSRecordBuilder:
         )
         return self
 
-    def ns(self, name: str, nameserver: str, ttl: int = 1800) -> Self:
+    def ns(self, name: str, nameserver: str, ttl: int = 1799) -> Self:
         """
         Add an NS record.
 
         Args:
             name: Record name
             nameserver: Nameserver hostname
-            ttl: Time to live in seconds
+            ttl: Time to live in seconds (default: 1799 = "Automatic")
 
         Returns:
             Self for chaining
@@ -151,7 +151,7 @@ class DNSRecordBuilder:
         url: str,
         *,
         redirect_type: Literal["301", "frame"] = "301",
-        ttl: int = 1800,
+        ttl: int = 1799,
     ) -> Self:
         """
         Add a URL redirect record.
@@ -160,7 +160,7 @@ class DNSRecordBuilder:
             name: Record name (@ for root)
             url: Target URL
             redirect_type: "301" for permanent redirect, "frame" for masked
-            ttl: Time to live in seconds
+            ttl: Time to live in seconds (default: 1799 = "Automatic")
 
         Returns:
             Self for chaining

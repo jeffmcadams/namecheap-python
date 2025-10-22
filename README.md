@@ -258,6 +258,8 @@ nc.dns.set("example.com",
 )
 ```
 
+**Note on TTL:** The default TTL is **1799 seconds**, which displays as **"Automatic"** in the Namecheap web interface. This is an undocumented Namecheap API behavior. You can specify custom TTL values (60-86400 seconds) in any DNS method.
+
 ### Domain Management
 
 ```python
@@ -315,12 +317,28 @@ except NamecheapError as e:
         print(f"💡 Tip: {e.help}")
 ```
 
+## ⚠️ Namecheap API Quirks
+
+This section documents undocumented or unusual Namecheap API behaviors we've discovered:
+
+### TTL "Automatic" = 1799 seconds
+
+The Namecheap web interface displays TTL as **"Automatic"** when the value is exactly **1799 seconds**, but shows **"30 min"** when it's **1800 seconds**. This behavior is completely undocumented in their official API documentation.
+
+Their API docs state TTL defaults to 1800 when omitted, but the UI treats 1799 specially. This SDK defaults to 1799 to match the "Automatic" behavior users see in the web interface.
+
+```python
+# Both are valid, but display differently in Namecheap UI:
+nc.dns.builder().a("www", "192.0.2.1", ttl=1799)  # Shows as "Automatic"
+nc.dns.builder().a("www", "192.0.2.1", ttl=1800)  # Shows as "30 min"
+```
+
 ## 🚧 Pending Features
 
 The following Namecheap API features are planned for future releases:
 
 - **SSL API** - Certificate management
-- **Domain Transfer API** - Transfer domains between registrars  
+- **Domain Transfer API** - Transfer domains between registrars
 - **Domain NS API** - Custom nameserver management
 - **Users API** - Account management and balance checking
 - **Whois API** - WHOIS information lookups

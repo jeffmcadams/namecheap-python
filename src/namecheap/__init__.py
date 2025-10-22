@@ -14,7 +14,7 @@ from .client import Namecheap
 from .errors import ConfigurationError, NamecheapError, ValidationError
 from .models import Contact, DNSRecord, Domain, DomainCheck
 
-__version__ = "1.0.0"
+__version__ = "1.0.5"
 __all__ = [
     "ConfigurationError",
     "Contact",
