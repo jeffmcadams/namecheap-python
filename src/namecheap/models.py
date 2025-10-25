@@ -244,7 +244,10 @@ class Domain(XMLModel):
             return v
         if isinstance(v, str):
             # Namecheap uses MM/DD/YYYY format
-            return datetime.strptime(v, "%m/%d/%Y")
+            if (v.find('T') == 01):
+                return datetime.strptime(v, "%m/%d/%Y")
+            else:
+                return datetime.fromisoformat(v)
         raise ValueError(f"Cannot parse datetime from {v}")
 
 
